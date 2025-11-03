@@ -1,0 +1,14 @@
+{
+  "include": [
+    "src",
+    "tests"
+  ],
+  "exclude": [
+    "**/__pycache__",
+    ".pytest_cache"
+  ],
+  "venvPath": ".",
+  "venv": "env-libcst",
+  "pythonVersion": "3.13",
+  "typeCheckingMode": "basic"
+}
