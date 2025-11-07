@@ -1,8 +1,10 @@
 """Utility to list all class definitions in a Python module using LibCST."""
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Union
 import libcst as cst
 from libcst.metadata import PositionProvider, MetadataWrapper
+import inspect
+import types
 
 
 class ClassDefinitionVisitor(cst.CSTVisitor):
@@ -49,7 +51,7 @@ class ClassDefinitionVisitor(cst.CSTVisitor):
         return str(decorator.decorator)
 
 
-def list_classes(source_code: str) -> List[Dict[str, Any]]:
+def list_classes_from_source_code(source_code: str) -> List[Dict[str, Any]]:
     """
     List all class definitions in the given Python source code.
     
@@ -71,7 +73,7 @@ def list_classes(source_code: str) -> List[Dict[str, Any]]:
         ... class AnotherClass(MyClass):
         ...     pass
         ... '''
-        >>> classes = list_classes(code)
+        >>> classes = list_classes_from_source_code(code)
         >>> len(classes)
         2
         >>> classes[0]['name']
@@ -104,7 +106,54 @@ def list_classes_from_file(file_path: str) -> List[Dict[str, Any]]:
     """
     with open(file_path, 'r', encoding='utf-8') as f:
         source_code = f.read()
-    return list_classes(source_code)
+    return list_classes_from_source_code(source_code)
+
+
+def list_classes_from_module(module: Union[types.ModuleType, str]) -> List[Dict[str, Any]]:
+    """
+    List all class definitions in an imported Python module.
+    
+    Args:
+        module: Either an imported module object or module name as string
+        
+    Returns:
+        A list of dictionaries containing class information
+        
+    Example:
+        >>> import transformers
+        >>> classes = list_classes_from_module(transformers)
+        >>> # Or by name
+        >>> classes = list_classes_from_module('transformers')
+    """
+    if isinstance(module, str):
+        # If string, try to import the module
+        import importlib
+        try:
+            module = importlib.import_module(module)
+        except ImportError as e:
+            raise ValueError(f"Could not import module '{module}': {e}")
+    
+    if not isinstance(module, types.ModuleType):
+        raise ValueError(f"Expected module object or string, got {type(module)}")
+    
+    # Get the source file path
+    try:
+        module_file = inspect.getfile(module)
+        if module_file.endswith('.pyc'):
+            module_file = module_file[:-1]  # Convert .pyc to .py
+    except (OSError, TypeError):
+        # For built-in modules or modules without source files
+        raise ValueError(f"Cannot get source file for module {module.__name__}. "
+                        "This might be a built-in module or compiled extension.")
+    
+    # Read and parse the source file
+    return list_classes_from_file(module_file)
+
+
+# Backward compatibility alias
+def list_classes(source_code: str) -> List[Dict[str, Any]]:
+    """Backward compatibility alias for list_classes_from_source_code."""
+    return list_classes_from_source_code(source_code)
 
 example_code = """
 class MyClass:
@@ -129,7 +178,7 @@ def main():
     
     def run_example():
         """Run the example with hardcoded code."""
-        classes = list_classes(example_code)
+        classes = list_classes_from_source_code(example_code)
         print("Source code example:") 
         print(example_code)
         print("Extracted classes:")

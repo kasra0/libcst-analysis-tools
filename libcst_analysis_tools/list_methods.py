@@ -1,8 +1,10 @@
 """Utility to list all methods of a class using LibCST."""
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 import libcst as cst
 from libcst.metadata import PositionProvider, MetadataWrapper
+import inspect
+import types
 
 
 
@@ -97,7 +99,7 @@ class MethodCollector(cst.CSTVisitor):
         return False
 
 
-def list_methods(source_code: str, class_name: str) -> List[Dict[str, Any]]:
+def list_methods_from_source_code(source_code: str, class_name: str) -> List[Dict[str, Any]]:
     """
     List all methods of a specific class in the given Python source code.
     
@@ -129,7 +131,7 @@ def list_methods(source_code: str, class_name: str) -> List[Dict[str, Any]]:
         ...     def static_method():
         ...         pass
         ... '''
-        >>> methods = list_methods(code, 'MyClass')
+        >>> methods = list_methods_from_source_code(code, 'MyClass')
         >>> len(methods)
         3
         >>> methods[0]['name']
@@ -163,7 +165,55 @@ def list_methods_from_file(file_path: str, class_name: str) -> List[Dict[str, An
     """
     with open(file_path, 'r', encoding='utf-8') as f:
         source_code = f.read()
-    return list_methods(source_code, class_name)
+    return list_methods_from_source_code(source_code, class_name)
+
+
+def list_methods_from_module(module: Union[types.ModuleType, str], class_name: str) -> List[Dict[str, Any]]:
+    """
+    List all methods of a specific class in an imported Python module.
+    
+    Args:
+        module: Either an imported module object or module name as string
+        class_name: Name of the class to extract methods from
+        
+    Returns:
+        A list of dictionaries containing method information
+        
+    Example:
+        >>> import my_module
+        >>> methods = list_methods_from_module(my_module, 'MyClass')
+        >>> # Or by name
+        >>> methods = list_methods_from_module('my_module', 'MyClass')
+    """
+    if isinstance(module, str):
+        # If string, try to import the module
+        import importlib
+        try:
+            module = importlib.import_module(module)
+        except ImportError as e:
+            raise ValueError(f"Could not import module '{module}': {e}")
+    
+    if not isinstance(module, types.ModuleType):
+        raise ValueError(f"Expected module object or string, got {type(module)}")
+    
+    # Get the source file path
+    try:
+        module_file = inspect.getfile(module)
+        if module_file.endswith('.pyc'):
+            module_file = module_file[:-1]  # Convert .pyc to .py
+    except (OSError, TypeError):
+        # For built-in modules or modules without source files
+        raise ValueError(f"Cannot get source file for module {module.__name__}. "
+                        "This might be a built-in module or compiled extension.")
+    
+    # Read and parse the source file
+    return list_methods_from_file(module_file, class_name)
+
+
+# Backward compatibility alias
+def list_methods(source_code: str, class_name: str) -> List[Dict[str, Any]]:
+    """Backward compatibility alias for list_methods_from_source_code."""
+    return list_methods_from_source_code(source_code, class_name)
 
 
 def main():
@@ -211,7 +261,7 @@ class AnotherClass:
         pass
 """
         
-        methods = list_methods(example_code, 'MyClass')
+        methods = list_methods_from_source_code(example_code, 'MyClass')
         print("Found methods in MyClass:")
         for method in methods:
             type_markers = []

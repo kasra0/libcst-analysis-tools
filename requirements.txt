@@ -1,2 +1,4 @@
 libcst==1.8.5
 pytest==8.4.2
+pytest-cov==7.0.0
+coverage[toml]==7.11.1

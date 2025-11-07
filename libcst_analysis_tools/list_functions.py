@@ -1,8 +1,10 @@
 """Utility to list all function definitions in a Python module using LibCST."""
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Union
 import libcst as cst
 from libcst.metadata import PositionProvider, MetadataWrapper
+import inspect
+import types
 
 
 class FunctionDefinitionVisitor(cst.CSTVisitor):
@@ -76,7 +78,7 @@ class FunctionDefinitionVisitor(cst.CSTVisitor):
         return str(decorator.decorator)
 
 
-def list_functions(source_code: str) -> List[Dict[str, Any]]:
+def list_functions_from_source_code(source_code: str) -> List[Dict[str, Any]]:
     """
     List all function definitions (not methods) in the given Python source code.
     
@@ -99,7 +101,7 @@ def list_functions(source_code: str) -> List[Dict[str, Any]]:
         ... async def async_function():
         ...     pass
         ... '''
-        >>> functions = list_functions(code)
+        >>> functions = list_functions_from_source_code(code)
         >>> len(functions)
         2
         >>> functions[0]['name']
@@ -134,7 +136,54 @@ def list_functions_from_file(file_path: str) -> List[Dict[str, Any]]:
     """
     with open(file_path, 'r', encoding='utf-8') as f:
         source_code = f.read()
-    return list_functions(source_code)
+    return list_functions_from_source_code(source_code)
+
+
+def list_functions_from_module(module: Union[types.ModuleType, str]) -> List[Dict[str, Any]]:
+    """
+    List all function definitions in an imported Python module.
+    
+    Args:
+        module: Either an imported module object or module name as string
+        
+    Returns:
+        A list of dictionaries containing function information
+        
+    Example:
+        >>> import math
+        >>> functions = list_functions_from_module(math)  # Won't work for built-in modules
+        >>> # Or by name
+        >>> functions = list_functions_from_module('my_module')
+    """
+    if isinstance(module, str):
+        # If string, try to import the module
+        import importlib
+        try:
+            module = importlib.import_module(module)
+        except ImportError as e:
+            raise ValueError(f"Could not import module '{module}': {e}")
+    
+    if not isinstance(module, types.ModuleType):
+        raise ValueError(f"Expected module object or string, got {type(module)}")
+    
+    # Get the source file path
+    try:
+        module_file = inspect.getfile(module)
+        if module_file.endswith('.pyc'):
+            module_file = module_file[:-1]  # Convert .pyc to .py
+    except (OSError, TypeError):
+        # For built-in modules or modules without source files
+        raise ValueError(f"Cannot get source file for module {module.__name__}. "
+                        "This might be a built-in module or compiled extension.")
+    
+    # Read and parse the source file
+    return list_functions_from_file(module_file)
+
+
+# Backward compatibility alias
+def list_functions(source_code: str) -> List[Dict[str, Any]]:
+    """Backward compatibility alias for list_functions_from_source_code."""
+    return list_functions_from_source_code(source_code)
 
 
 def main():
@@ -163,7 +212,7 @@ class MyClass:
         pass
 """
         
-        functions = list_functions(example_code)
+        functions = list_functions_from_source_code(example_code)
         print("Found functions in example code:")
         for func in functions:
             async_marker = "async " if func['is_async'] else ""

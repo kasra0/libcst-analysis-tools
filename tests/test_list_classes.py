@@ -1,7 +1,12 @@
 """Tests for list_classes module."""
 
 import pytest
-from libcst_analysis_tools.list_classes import list_classes, list_classes_from_file
+import tempfile
+import os
+from libcst_analysis_tools.list_classes import (
+    list_classes, list_classes_from_source_code, 
+    list_classes_from_file, list_classes_from_module
+)
 
 
 def test_list_simple_class():
@@ -10,11 +15,22 @@ def test_list_simple_class():
 class SimpleClass:
     pass
 """
-    classes = list_classes(code)
+    classes = list_classes_from_source_code(code)
     assert len(classes) == 1
     assert classes[0]['name'] == 'SimpleClass'
     assert classes[0]['bases'] == []
     assert classes[0]['decorators'] == []
+
+
+def test_list_simple_class_backward_compatibility():
+    """Test backward compatibility alias."""
+    code = """
+class SimpleClass:
+    pass
+"""
+    classes = list_classes(code)
+    assert len(classes) == 1
+    assert classes[0]['name'] == 'SimpleClass'
 
 
 def test_list_class_with_inheritance():
@@ -160,6 +176,66 @@ class MultiDecoratedClass:
     assert 'decorator1' in classes[0]['decorators']
     assert 'decorator2' in classes[0]['decorators']
     assert 'decorator3' in classes[0]['decorators']
+
+
+def test_list_classes_from_module():
+    """Test listing classes from a module object."""
+    # Create a temporary Python file
+    test_code = """
+class ModuleTestClass:
+    '''A test class in a module.'''
+    pass
+
+class AnotherModuleClass:
+    '''Another test class.'''
+    def method(self):
+        pass
+"""
+    
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write(test_code)
+        temp_file = f.name
+    
+    try:
+        # Import the temporary module
+        import importlib.util
+        import sys
+        
+        spec = importlib.util.spec_from_file_location("temp_module", temp_file)
+        if spec is None or spec.loader is None:
+            pytest.skip("Could not create module spec")
+            
+        temp_module = importlib.util.module_from_spec(spec)
+        sys.modules["temp_module"] = temp_module
+        spec.loader.exec_module(temp_module)
+        
+        # Test list_classes_from_module
+        classes = list_classes_from_module(temp_module)
+        assert len(classes) == 2
+        class_names = [c['name'] for c in classes]
+        assert 'ModuleTestClass' in class_names
+        assert 'AnotherModuleClass' in class_names
+        
+        # Test by module name
+        classes2 = list_classes_from_module('temp_module')
+        assert len(classes2) == 2
+        
+    finally:
+        # Clean up
+        if 'temp_module' in sys.modules:
+            del sys.modules['temp_module']
+        os.unlink(temp_file)
+
+
+def test_list_classes_from_module_errors():
+    """Test error handling for list_classes_from_module."""
+    # Test with non-existent module name
+    with pytest.raises(ValueError, match="Could not import module"):
+        list_classes_from_module('non_existent_module_xyz')
+    
+    # Test with wrong type
+    with pytest.raises(ValueError, match="Expected module object or string"):
+        list_classes_from_module(42)  # type: ignore
 
 
 if __name__ == "__main__":

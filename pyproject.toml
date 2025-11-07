@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "libcst-analysis-tools"
-version = "0.1.0"
+version = "0.2.0"
 description = "Python code analysis tools built with LibCST - extract classes, functions, and methods from Python source code"
 readme = "README.md"
 license = {text = "MIT"}
@@ -33,7 +33,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
-    "pytest-cov",
+    "pytest-cov>=4.0",
+    "coverage[toml]>=7.0",
     "black",
     "flake8",
     "mypy",
@@ -70,3 +71,36 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+]
+
+[tool.coverage.run]
+source = ["libcst_analysis_tools"]
+omit = [
+    "tests/*",
+    "*/venv/*",
+    "*/__pycache__/*",
+    "*/env-*/*",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "def __str__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"

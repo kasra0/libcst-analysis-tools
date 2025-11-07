@@ -2,17 +2,32 @@
 
 A collection of Python code analysis tools built with LibCST.
 """
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
-from .list_classes   import list_classes,   list_classes_from_file
-from .list_functions import list_functions, list_functions_from_file  
-from .list_methods   import list_methods,   list_methods_from_file
+# Modern API (recommended)
+from .list_classes   import list_classes_from_source_code,   list_classes_from_file,   list_classes_from_module
+from .list_functions import list_functions_from_source_code, list_functions_from_file, list_functions_from_module
+from .list_methods   import list_methods_from_source_code,   list_methods_from_file,   list_methods_from_module
+
+# Backward compatibility aliases
+from .list_classes   import list_classes
+from .list_functions import list_functions
+from .list_methods   import list_methods
 
 __all__ = [
-    "list_classes",
-    "list_classes_from_file", 
-    "list_functions",
+    # Modern API
+    "list_classes_from_source_code",
+    "list_classes_from_file",
+    "list_classes_from_module",
+    "list_functions_from_source_code",
     "list_functions_from_file",
-    "list_methods", 
+    "list_functions_from_module",
+    "list_methods_from_source_code",
     "list_methods_from_file",
+    "list_methods_from_module",
+    
+    # Backward compatibility
+    "list_classes",
+    "list_functions",
+    "list_methods",
 ]

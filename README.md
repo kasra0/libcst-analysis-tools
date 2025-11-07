@@ -204,6 +204,52 @@ Returns a list of dictionaries with method information:
 - `is_classmethod`: Boolean indicating if it's a class method
 - `is_property`: Boolean indicating if it's a property
 
+## Development
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest tests/
+
+# Run with coverage
+pytest --cov=libcst_analysis_tools tests/
+
+# Generate HTML coverage report
+pytest --cov=libcst_analysis_tools --cov-report=html tests/
+
+# Or use the helper script
+./run_tests.sh
+```
+
+### Coverage Report
+
+After running tests with coverage, open the HTML report:
+
+```bash
+# macOS
+open htmlcov/index.html
+
+# Linux
+xdg-open htmlcov/index.html
+```
+
+Current coverage: **~45%** (tests for all major functions)
+
+### Installing Dev Dependencies
+
+```bash
+pip install -e ".[dev]"
+```
+
+This installs:
+- pytest
+- pytest-cov
+- coverage
+- black (code formatter)
+- flake8 (linter)
+- mypy (type checker)
+
 ## Dependencies
 
 - **libcst** (1.8.5): Concrete Syntax Tree parser for Python
