@@ -1,7 +1,7 @@
 """Tests for list_functions module."""
 
 import pytest
-from src.list_functions import list_functions, list_functions_from_file
+from libcst_analysis_tools.list_functions import list_functions, list_functions_from_file
 
 
 def test_list_simple_function():

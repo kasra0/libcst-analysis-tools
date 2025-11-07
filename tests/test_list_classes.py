@@ -1,7 +1,7 @@
 """Tests for list_classes module."""
 
 import pytest
-from src.list_classes import list_classes, list_classes_from_file
+from libcst_analysis_tools.list_classes import list_classes, list_classes_from_file
 
 
 def test_list_simple_class():

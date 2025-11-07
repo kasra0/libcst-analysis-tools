@@ -45,15 +45,15 @@ Repository = "https://github.com/kasra0/libcst-analysis-tools"
 Issues = "https://github.com/kasra0/libcst-analysis-tools/issues"
 
 [project.scripts]
-list-classes = "src.list_classes:main"
-list-functions = "src.list_functions:main"
-list-methods = "src.list_methods:main"
+list-classes = "libcst_analysis_tools.list_classes:main"
+list-functions = "libcst_analysis_tools.list_functions:main"
+list-methods = "libcst_analysis_tools.list_methods:main"
 
 [tool.setuptools]
-packages = ["src"]
+packages = ["libcst_analysis_tools"]
 
 [tool.setuptools.package-data]
-src = ["*.py"]
+libcst_analysis_tools = ["*.py"]
 
 [tool.black]
 line-length = 100

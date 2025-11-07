@@ -1,7 +1,7 @@
 """Tests for list_methods module."""
 
 import pytest
-from src.list_methods import list_methods, list_methods_from_file
+from libcst_analysis_tools.list_methods import list_methods, list_methods_from_file
 
 
 def test_list_simple_method():
