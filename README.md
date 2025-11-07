@@ -1,23 +1,44 @@
-# LibCST Utilities
+# LibCST Analysis Tools
 
-A Python project for analyzing Python source code using the [LibCST](https://libcst.readthedocs.io/) library.
+Python code analysis tools built with LibCST - extract classes, functions, and methods from Python source code.
 
-## Features
+## Installation
 
-This project provides utilities to extract information from Python source code:
-
-* **List all class definitions** in a module
-* **List all function definitions** in a module (excluding methods)
-* **List all methods** of a specific class
-
-## Setup
-
-### 1. Create and activate virtual environment
+### From GitHub
 
 ```bash
-cd /Users/kasra/Repositories/sandbox2/python-libcst-sandbox
-python3 -m venv env-libcst
-source env-libcst/bin/activate
+pip install git+https://github.com/kasra0/libcst-analysis-tools.git
+```
+
+### Local Development
+
+```bash
+git clone https://github.com/kasra0/libcst-analysis-tools.git
+cd libcst-analysis-tools
+pip install -e .
+```
+
+## Command Line Usage
+
+Once installed, you can use the command-line tools:
+
+```bash
+# List classes in Python files
+list-classes file1.py file2.py
+list-classes src/*.py
+
+# List functions in Python files  
+list-functions file1.py file2.py
+list-functions src/*.py
+
+# List methods of a specific class
+list-methods --class MyClass file1.py
+list-methods --class SomeClass src/*.py
+
+# Run examples
+list-classes --example
+list-functions --example  
+list-methods --example
 ```
 
 ### 2. Install dependencies

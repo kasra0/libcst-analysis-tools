@@ -166,8 +166,9 @@ def list_methods_from_file(file_path: str, class_name: str) -> List[Dict[str, An
     return list_methods(source_code, class_name)
 
 
-if __name__ == "__main__":
-    from src.cli_utils import create_common_parser, process_files
+def main():
+    """Entry point for the CLI script."""
+    from cli_utils import create_common_parser, process_files
     import argparse
     import sys
     from pathlib import Path
@@ -233,9 +234,9 @@ class AnotherClass:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python src/list_methods.py --class MyClass file1.py file2.py
-  python src/list_methods.py --class SomeClass src/*.py
-  python src/list_methods.py --example
+  list-methods --class MyClass file1.py file2.py
+  list-methods --class SomeClass src/*.py
+  list-methods --example
         """
     )
     
@@ -306,3 +307,7 @@ Examples:
             print("Error: --class argument is required when analyzing files", file=sys.stderr)
         parser.print_help()
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

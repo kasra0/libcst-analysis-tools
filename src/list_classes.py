@@ -106,13 +106,7 @@ def list_classes_from_file(file_path: str) -> List[Dict[str, Any]]:
         source_code = f.read()
     return list_classes(source_code)
 
-
-if __name__ == "__main__":
-    from cli_utils import create_common_parser, process_files, format_classes_results
-    
-    def run_example():
-        """Run the example with hardcoded code."""
-        example_code = """
+example_code = """
 class MyClass:
     '''A simple class.'''
     pass
@@ -128,9 +122,17 @@ class DataClass:
     name: str
     value: int
 """
-        
+
+def main():
+    """Entry point for the CLI script."""
+    from cli_utils import create_common_parser, process_files, format_classes_results
+    
+    def run_example():
+        """Run the example with hardcoded code."""
         classes = list_classes(example_code)
-        print("Found classes in example code:")
+        print("Source code example:") 
+        print(example_code)
+        print("Extracted classes:")
         for cls in classes:
             print(f"  - {cls['name']} (bases: {cls['bases']}, decorators: {cls['decorators']})")
     
@@ -139,5 +141,8 @@ class DataClass:
         "list_classes"
     )
     args = parser.parse_args()
-    
     process_files(args, run_example, list_classes_from_file, format_classes_results)
+
+
+if __name__ == "__main__":
+    main()

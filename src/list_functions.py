@@ -137,7 +137,8 @@ def list_functions_from_file(file_path: str) -> List[Dict[str, Any]]:
     return list_functions(source_code)
 
 
-if __name__ == "__main__":
+def main():
+    """Entry point for the CLI script."""
     from cli_utils import create_common_parser, process_files, format_functions_results
     
     def run_example():
@@ -179,3 +180,7 @@ class MyClass:
     args = parser.parse_args()
     
     process_files(args, run_example, list_functions_from_file, format_functions_results)
+
+
+if __name__ == "__main__":
+    main()
