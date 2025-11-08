@@ -17,9 +17,9 @@ class SimpleClass:
 """
     classes = list_classes_from_source_code(code)
     assert len(classes) == 1
-    assert classes[0]['name'] == 'SimpleClass'
-    assert classes[0]['bases'] == []
-    assert classes[0]['decorators'] == []
+    assert classes[0].name == 'SimpleClass'
+    assert classes[0].bases == []
+    assert classes[0].decorators == []
 
 
 def test_list_simple_class_backward_compatibility():
@@ -30,7 +30,7 @@ class SimpleClass:
 """
     classes = list_classes(code)
     assert len(classes) == 1
-    assert classes[0]['name'] == 'SimpleClass'
+    assert classes[0].name == 'SimpleClass'
 
 
 def test_list_class_with_inheritance():
@@ -44,9 +44,9 @@ class DerivedClass(BaseClass):
 """
     classes = list_classes(code)
     assert len(classes) == 2
-    assert classes[0]['name'] == 'BaseClass'
-    assert classes[1]['name'] == 'DerivedClass'
-    assert 'BaseClass' in classes[1]['bases']
+    assert classes[0].name == 'BaseClass'
+    assert classes[1].name == 'DerivedClass'
+    assert 'BaseClass' in classes[1].bases
 
 
 def test_list_class_with_multiple_bases():
@@ -63,9 +63,9 @@ class MultiDerived(Base1, Base2):
 """
     classes = list_classes(code)
     assert len(classes) == 3
-    assert classes[2]['name'] == 'MultiDerived'
-    assert 'Base1' in classes[2]['bases']
-    assert 'Base2' in classes[2]['bases']
+    assert classes[2].name == 'MultiDerived'
+    assert 'Base1' in classes[2].bases
+    assert 'Base2' in classes[2].bases
 
 
 def test_list_class_with_decorator():
@@ -78,8 +78,8 @@ class DecoratedClass:
 """
     classes = list_classes(code)
     assert len(classes) == 1
-    assert classes[0]['name'] == 'DecoratedClass'
-    assert 'dataclass' in classes[0]['decorators']
+    assert classes[0].name == 'DecoratedClass'
+    assert 'dataclass' in classes[0].decorators
 
 
 def test_list_multiple_classes():
@@ -96,9 +96,9 @@ class Class3:
 """
     classes = list_classes(code)
     assert len(classes) == 3
-    assert classes[0]['name'] == 'Class1'
-    assert classes[1]['name'] == 'Class2'
-    assert classes[2]['name'] == 'Class3'
+    assert classes[0].name == 'Class1'
+    assert classes[1].name == 'Class2'
+    assert classes[2].name == 'Class3'
 
 
 def test_list_nested_class():
@@ -110,7 +110,7 @@ class OuterClass:
 """
     classes = list_classes(code)
     assert len(classes) == 2
-    class_names = [cls['name'] for cls in classes]
+    class_names = [cls.name for cls in classes]
     assert 'OuterClass' in class_names
     assert 'InnerClass' in class_names
 
@@ -156,7 +156,7 @@ class GenericClass(Generic[T]):
 """
     classes = list_classes(code)
     assert len(classes) == 1
-    assert classes[0]['name'] == 'GenericClass'
+    assert classes[0].name == 'GenericClass'
     # The base will include the Generic[T] expression
 
 
@@ -171,11 +171,11 @@ class MultiDecoratedClass:
 """
     classes = list_classes(code)
     assert len(classes) == 1
-    assert classes[0]['name'] == 'MultiDecoratedClass'
-    assert len(classes[0]['decorators']) == 3
-    assert 'decorator1' in classes[0]['decorators']
-    assert 'decorator2' in classes[0]['decorators']
-    assert 'decorator3' in classes[0]['decorators']
+    assert classes[0].name == 'MultiDecoratedClass'
+    assert len(classes[0].decorators) == 3
+    assert 'decorator1' in classes[0].decorators
+    assert 'decorator2' in classes[0].decorators
+    assert 'decorator3' in classes[0].decorators
 
 
 def test_list_classes_from_module():
@@ -212,7 +212,7 @@ class AnotherModuleClass:
         # Test list_classes_from_module
         classes = list_classes_from_module(temp_module)
         assert len(classes) == 2
-        class_names = [c['name'] for c in classes]
+        class_names = [c.name for c in classes]
         assert 'ModuleTestClass' in class_names
         assert 'AnotherModuleClass' in class_names
         

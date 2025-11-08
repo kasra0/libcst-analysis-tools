@@ -13,8 +13,8 @@ class MyClass:
 """
     methods = list_methods(code, 'MyClass')
     assert len(methods) == 1
-    assert methods[0]['name'] == 'simple_method'
-    assert 'self' in methods[0]['parameters']
+    assert methods[0].name == 'simple_method'
+    assert 'self' in methods[0].parameters
 
 
 def test_list_init_method():
@@ -26,9 +26,9 @@ class MyClass:
 """
     methods = list_methods(code, 'MyClass')
     assert len(methods) == 1
-    assert methods[0]['name'] == '__init__'
-    assert 'self' in methods[0]['parameters']
-    assert 'value' in methods[0]['parameters']
+    assert methods[0].name == '__init__'
+    assert 'self' in methods[0].parameters
+    assert 'value' in methods[0].parameters
 
 
 def test_list_multiple_methods():
@@ -46,7 +46,7 @@ class MyClass:
 """
     methods = list_methods(code, 'MyClass')
     assert len(methods) == 3
-    method_names = [m['name'] for m in methods]
+    method_names = [m.name for m in methods]
     assert '__init__' in method_names
     assert 'method1' in method_names
     assert 'method2' in method_names
@@ -62,11 +62,11 @@ class MyClass:
 """
     methods = list_methods(code, 'MyClass')
     assert len(methods) == 1
-    assert methods[0]['name'] == 'static_method'
-    assert methods[0]['is_staticmethod'] == True
-    assert methods[0]['is_classmethod'] == False
-    assert 'x' in methods[0]['parameters']
-    assert 'y' in methods[0]['parameters']
+    assert methods[0].name == 'static_method'
+    assert methods[0].is_staticmethod == True
+    assert methods[0].is_classmethod == False
+    assert 'x' in methods[0].parameters
+    assert 'y' in methods[0].parameters
 
 
 def test_classmethod():
@@ -79,10 +79,10 @@ class MyClass:
 """
     methods = list_methods(code, 'MyClass')
     assert len(methods) == 1
-    assert methods[0]['name'] == 'class_method'
-    assert methods[0]['is_classmethod'] == True
-    assert methods[0]['is_staticmethod'] == False
-    assert 'cls' in methods[0]['parameters']
+    assert methods[0].name == 'class_method'
+    assert methods[0].is_classmethod == True
+    assert methods[0].is_staticmethod == False
+    assert 'cls' in methods[0].parameters
 
 
 def test_property():
@@ -95,8 +95,8 @@ class MyClass:
 """
     methods = list_methods(code, 'MyClass')
     assert len(methods) == 1
-    assert methods[0]['name'] == 'my_property'
-    assert methods[0]['is_property'] == True
+    assert methods[0].name == 'my_property'
+    assert methods[0].is_property == True
 
 
 def test_async_method():
@@ -108,8 +108,8 @@ class MyClass:
 """
     methods = list_methods(code, 'MyClass')
     assert len(methods) == 1
-    assert methods[0]['name'] == 'async_method'
-    assert methods[0]['is_async'] == True
+    assert methods[0].name == 'async_method'
+    assert methods[0].is_async == True
 
 
 def test_method_with_decorators():
@@ -123,9 +123,9 @@ class MyClass:
 """
     methods = list_methods(code, 'MyClass')
     assert len(methods) == 1
-    assert methods[0]['name'] == 'decorated_method'
-    assert 'decorator1' in methods[0]['decorators']
-    assert 'decorator2' in methods[0]['decorators']
+    assert methods[0].name == 'decorated_method'
+    assert 'decorator1' in methods[0].decorators
+    assert 'decorator2' in methods[0].decorators
 
 
 def test_wrong_class_name():
@@ -155,7 +155,7 @@ class Class2:
 """
     methods = list_methods(code, 'Class2')
     assert len(methods) == 2
-    method_names = [m['name'] for m in methods]
+    method_names = [m.name for m in methods]
     assert 'method2' in method_names
     assert 'method3' in method_names
     assert 'method1' not in method_names
@@ -170,8 +170,8 @@ class MyClass:
 """
     methods = list_methods(code, 'MyClass')
     assert len(methods) == 1
-    assert '*args' in methods[0]['parameters']
-    assert '**kwargs' in methods[0]['parameters']
+    assert '*args' in methods[0].parameters
+    assert '**kwargs' in methods[0].parameters
 
 
 def test_dunder_methods():
@@ -192,7 +192,7 @@ class MyClass:
 """
     methods = list_methods(code, 'MyClass')
     assert len(methods) == 4
-    method_names = [m['name'] for m in methods]
+    method_names = [m.name for m in methods]
     assert '__init__' in method_names
     assert '__str__' in method_names
     assert '__repr__' in method_names
@@ -234,7 +234,7 @@ class OuterClass:
     methods = list_methods(code, 'OuterClass')
     # Should only include outer_method, not inner_method
     assert len(methods) == 1
-    assert methods[0]['name'] == 'outer_method'
+    assert methods[0].name == 'outer_method'
 
 
 def test_method_with_complex_parameters():
@@ -246,7 +246,7 @@ class MyClass:
 """
     methods = list_methods(code, 'MyClass')
     assert len(methods) == 1
-    params = methods[0]['parameters']
+    params = methods[0].parameters
     assert 'self' in params
     assert 'a' in params
     assert 'b' in params

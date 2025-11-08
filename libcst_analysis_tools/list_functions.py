@@ -1,10 +1,21 @@
 """Utility to list all function definitions in a Python module using LibCST."""
 
 from typing import List, Dict, Any, Union
+from dataclasses import dataclass
 import libcst as cst
 from libcst.metadata import PositionProvider, MetadataWrapper
 import inspect
 import types
+
+
+@dataclass
+class FunctionInfo:
+    """Information about a function definition."""
+    name: str
+    lineno: int
+    parameters: List[str]
+    decorators: List[str]
+    is_async: bool
 
 
 class FunctionDefinitionVisitor(cst.CSTVisitor):
@@ -13,7 +24,7 @@ class FunctionDefinitionVisitor(cst.CSTVisitor):
     METADATA_DEPENDENCIES = (PositionProvider,)
     
     def __init__(self):
-        self.functions: List[Dict[str, Any]] = []
+        self.functions: List[FunctionInfo] = []
         self._in_class = False
     
     def visit_ClassDef(self, node: cst.ClassDef) -> bool:
@@ -29,13 +40,13 @@ class FunctionDefinitionVisitor(cst.CSTVisitor):
         """Visit a function definition and collect its information if it's not a method."""
         # Only collect top-level functions, not methods inside classes
         if not self._in_class:
-            function_info = {
-                "name": node.name.value,
-                "lineno": self._get_line_number(node),
-                "parameters": self._get_parameters(node.params),
-                "decorators": [self._get_decorator_name(dec) for dec in node.decorators],
-                "is_async": isinstance(node, cst.FunctionDef) and node.asynchronous is not None,
-            }
+            function_info = FunctionInfo(
+                name=node.name.value,
+                lineno=self._get_line_number(node),
+                parameters=self._get_parameters(node.params),
+                decorators=[self._get_decorator_name(dec) for dec in node.decorators],
+                is_async=isinstance(node, cst.FunctionDef) and node.asynchronous is not None,
+            )
             self.functions.append(function_info)
     
     def _get_line_number(self, node: cst.FunctionDef) -> int:
@@ -78,7 +89,7 @@ class FunctionDefinitionVisitor(cst.CSTVisitor):
         return str(decorator.decorator)
 
 
-def list_functions_from_source_code(source_code: str) -> List[Dict[str, Any]]:
+def list_functions_from_source_code(source_code: str) -> List[FunctionInfo]:
     """
     List all function definitions (not methods) in the given Python source code.
     
@@ -86,7 +97,7 @@ def list_functions_from_source_code(source_code: str) -> List[Dict[str, Any]]:
         source_code: Python source code as a string
         
     Returns:
-        A list of dictionaries containing function information:
+        A list of FunctionInfo objects containing function information:
         - name: function name
         - lineno: line number where function is defined
         - parameters: list of parameter names
@@ -104,9 +115,9 @@ def list_functions_from_source_code(source_code: str) -> List[Dict[str, Any]]:
         >>> functions = list_functions_from_source_code(code)
         >>> len(functions)
         2
-        >>> functions[0]['name']
+        >>> functions[0].name
         'my_function'
-        >>> functions[1]['is_async']
+        >>> functions[1].is_async
         True
     """
     try:
@@ -124,7 +135,7 @@ def list_functions_from_source_code(source_code: str) -> List[Dict[str, Any]]:
         raise ValueError(f"Failed to parse source code: {e}")
 
 
-def list_functions_from_file(file_path: str) -> List[Dict[str, Any]]:
+def list_functions_from_file(file_path: str) -> List[FunctionInfo]:
     """
     List all function definitions in a Python file.
     
@@ -132,14 +143,14 @@ def list_functions_from_file(file_path: str) -> List[Dict[str, Any]]:
         file_path: Path to the Python file
         
     Returns:
-        A list of dictionaries containing function information
+        A list of FunctionInfo objects containing function information
     """
     with open(file_path, 'r', encoding='utf-8') as f:
         source_code = f.read()
     return list_functions_from_source_code(source_code)
 
 
-def list_functions_from_module(module: Union[types.ModuleType, str]) -> List[Dict[str, Any]]:
+def list_functions_from_module(module: Union[types.ModuleType, str]) -> List[FunctionInfo]:
     """
     List all function definitions in an imported Python module.
     
@@ -147,7 +158,7 @@ def list_functions_from_module(module: Union[types.ModuleType, str]) -> List[Dic
         module: Either an imported module object or module name as string
         
     Returns:
-        A list of dictionaries containing function information
+        A list of FunctionInfo objects containing function information
         
     Example:
         >>> import math
@@ -181,7 +192,7 @@ def list_functions_from_module(module: Union[types.ModuleType, str]) -> List[Dic
 
 
 # Backward compatibility alias
-def list_functions(source_code: str) -> List[Dict[str, Any]]:
+def list_functions(source_code: str) -> List[FunctionInfo]:
     """Backward compatibility alias for list_functions_from_source_code."""
     return list_functions_from_source_code(source_code)
 
@@ -215,12 +226,12 @@ class MyClass:
         functions = list_functions_from_source_code(example_code)
         print("Found functions in example code:")
         for func in functions:
-            async_marker = "async " if func['is_async'] else ""
-            params = ", ".join(func['parameters'])
-            decorators = f"@{', @'.join(func['decorators'])}" if func['decorators'] else ""
+            async_marker = "async " if func.is_async else ""
+            params = ", ".join(func.parameters)
+            decorators = f"@{', @'.join(func.decorators)}" if func.decorators else ""
             if decorators:
                 print(f"  {decorators}")
-            print(f"  - {async_marker}{func['name']}({params})")
+            print(f"  - {async_marker}{func.name}({params})")
     
     parser = create_common_parser(
         "List all function definitions in Python files using LibCST",

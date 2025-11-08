@@ -2,7 +2,12 @@
 
 A collection of Python code analysis tools built with LibCST.
 """
-__version__ = "0.2.0"
+__version__ = "0.3.0"
+
+# Type definitions
+from .list_classes   import ClassInfo
+from .list_functions import FunctionInfo
+from .list_methods   import MethodInfo
 
 # Modern API (recommended)
 from .list_classes   import list_classes_from_source_code,   list_classes_from_file,   list_classes_from_module
@@ -15,6 +20,11 @@ from .list_functions import list_functions
 from .list_methods   import list_methods
 
 __all__ = [
+    # Type definitions
+    "ClassInfo",
+    "FunctionInfo",
+    "MethodInfo",
+    
     # Modern API
     "list_classes_from_source_code",
     "list_classes_from_file",

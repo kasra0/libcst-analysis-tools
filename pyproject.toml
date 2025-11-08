@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "libcst-analysis-tools"
-version = "0.2.0"
-description = "Python code analysis tools built with LibCST - extract classes, functions, and methods from Python source code"
+version = "0.3.0"
+description = "Python code analysis tools built with LibCST - extract classes, functions, and methods with full type safety and IntelliSense support"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [

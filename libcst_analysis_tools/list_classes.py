@@ -1,10 +1,20 @@
 """Utility to list all class definitions in a Python module using LibCST."""
 
 from typing import List, Dict, Any, Union
+from dataclasses import dataclass
 import libcst as cst
 from libcst.metadata import PositionProvider, MetadataWrapper
 import inspect
 import types
+
+
+@dataclass
+class ClassInfo:
+    """Information about a class definition."""
+    name: str
+    lineno: int
+    bases: List[str]
+    decorators: List[str]
 
 
 class ClassDefinitionVisitor(cst.CSTVisitor):
@@ -13,16 +23,16 @@ class ClassDefinitionVisitor(cst.CSTVisitor):
     METADATA_DEPENDENCIES = (PositionProvider,)
     
     def __init__(self):
-        self.classes: List[Dict[str, Any]] = []
+        self.classes: List[ClassInfo] = []
     
     def visit_ClassDef(self, node: cst.ClassDef) -> None:
         """Visit a class definition and collect its information."""
-        class_info = {
-            "name": node.name.value,
-            "lineno": self._get_line_number(node),
-            "bases": [self._get_base_name(base.value) for base in node.bases],
-            "decorators": [self._get_decorator_name(dec) for dec in node.decorators],
-        }
+        class_info = ClassInfo(
+            name=node.name.value,
+            lineno=self._get_line_number(node),
+            bases=[self._get_base_name(base.value) for base in node.bases],
+            decorators=[self._get_decorator_name(dec) for dec in node.decorators],
+        )
         self.classes.append(class_info)
     
     def _get_line_number(self, node: cst.ClassDef) -> int:
@@ -51,7 +61,7 @@ class ClassDefinitionVisitor(cst.CSTVisitor):
         return str(decorator.decorator)
 
 
-def list_classes_from_source_code(source_code: str) -> List[Dict[str, Any]]:
+def list_classes_from_source_code(source_code: str) -> List[ClassInfo]:
     """
     List all class definitions in the given Python source code.
     
@@ -59,7 +69,7 @@ def list_classes_from_source_code(source_code: str) -> List[Dict[str, Any]]:
         source_code: Python source code as a string
         
     Returns:
-        A list of dictionaries containing class information:
+        A list of ClassInfo objects containing class information:
         - name: class name
         - lineno: line number where class is defined
         - bases: list of base class names
@@ -76,7 +86,7 @@ def list_classes_from_source_code(source_code: str) -> List[Dict[str, Any]]:
         >>> classes = list_classes_from_source_code(code)
         >>> len(classes)
         2
-        >>> classes[0]['name']
+        >>> classes[0].name
         'MyClass'
     """
     try:
@@ -94,7 +104,7 @@ def list_classes_from_source_code(source_code: str) -> List[Dict[str, Any]]:
         raise ValueError(f"Failed to parse source code: {e}")
 
 
-def list_classes_from_file(file_path: str) -> List[Dict[str, Any]]:
+def list_classes_from_file(file_path: str) -> List[ClassInfo]:
     """
     List all class definitions in a Python file.
     
@@ -102,14 +112,14 @@ def list_classes_from_file(file_path: str) -> List[Dict[str, Any]]:
         file_path: Path to the Python file
         
     Returns:
-        A list of dictionaries containing class information
+        A list of ClassInfo objects containing class information
     """
     with open(file_path, 'r', encoding='utf-8') as f:
         source_code = f.read()
     return list_classes_from_source_code(source_code)
 
 
-def list_classes_from_module(module: Union[types.ModuleType, str]) -> List[Dict[str, Any]]:
+def list_classes_from_module(module: Union[types.ModuleType, str]) -> List[ClassInfo]:
     """
     List all class definitions in an imported Python module.
     
@@ -117,7 +127,7 @@ def list_classes_from_module(module: Union[types.ModuleType, str]) -> List[Dict[
         module: Either an imported module object or module name as string
         
     Returns:
-        A list of dictionaries containing class information
+        A list of ClassInfo objects containing class information
         
     Example:
         >>> import transformers
@@ -151,7 +161,7 @@ def list_classes_from_module(module: Union[types.ModuleType, str]) -> List[Dict[
 
 
 # Backward compatibility alias
-def list_classes(source_code: str) -> List[Dict[str, Any]]:
+def list_classes(source_code: str) -> List[ClassInfo]:
     """Backward compatibility alias for list_classes_from_source_code."""
     return list_classes_from_source_code(source_code)
 
@@ -183,7 +193,7 @@ def main():
         print(example_code)
         print("Extracted classes:")
         for cls in classes:
-            print(f"  - {cls['name']} (bases: {cls['bases']}, decorators: {cls['decorators']})")
+            print(f"  - {cls.name} (bases: {cls.bases}, decorators: {cls.decorators})")
     
     parser = create_common_parser(
         "List all class definitions in Python files using LibCST",

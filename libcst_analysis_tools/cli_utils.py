@@ -86,7 +86,7 @@ def format_classes_results(file_path: str, classes: List[Any]) -> None:
     print(f"\nClasses in {file_path}:")
     if classes:
         for cls in classes:
-            print(f"  - {cls['name']} (line {cls['lineno']}, bases: {cls['bases']}, decorators: {cls['decorators']})")
+            print(f"  - {cls.name} (line {cls.lineno}, bases: {cls.bases}, decorators: {cls.decorators})")
     else:
         print("  No classes found")
 
@@ -96,11 +96,10 @@ def format_functions_results(file_path: str, functions: List[Any]) -> None:
     print(f"\nFunctions in {file_path}:")
     if functions:
         for func in functions:
-            async_prefix = "async " if func.get('is_async', False) else ""
-            params = ", ".join(func.get('parameters', []))
-            decorators = func.get('decorators', [])
-            decorators_str = f" (decorators: {decorators})" if decorators else ""
-            print(f"  - {async_prefix}{func['name']}({params}) (line {func['lineno']}){decorators_str}")
+            async_prefix = "async " if func.is_async else ""
+            params = ", ".join(func.parameters)
+            decorators_str = f" (decorators: {func.decorators})" if func.decorators else ""
+            print(f"  - {async_prefix}{func.name}({params}) (line {func.lineno}){decorators_str}")
     else:
         print("  No functions found")
 
@@ -116,20 +115,19 @@ def format_methods_results(file_path: str, methods: List[Any], class_name: str |
         for method in methods:
             # Build method type indicators
             indicators = []
-            if method.get('is_async', False):
+            if method.is_async:
                 indicators.append("async")
-            if method.get('is_staticmethod', False):
+            if method.is_staticmethod:
                 indicators.append("@staticmethod")
-            elif method.get('is_classmethod', False):
+            elif method.is_classmethod:
                 indicators.append("@classmethod")
-            elif method.get('is_property', False):
+            elif method.is_property:
                 indicators.append("@property")
             
             prefix = " ".join(indicators) + " " if indicators else ""
-            params = ", ".join(method.get('parameters', []))
-            decorators = method.get('decorators', [])
-            decorators_str = f" (decorators: {decorators})" if decorators else ""
+            params = ", ".join(method.parameters)
+            decorators_str = f" (decorators: {method.decorators})" if method.decorators else ""
             
-            print(f"  - {prefix}{method['name']}({params}) (line {method['lineno']}){decorators_str}")
+            print(f"  - {prefix}{method.name}({params}) (line {method.lineno}){decorators_str}")
     else:
         print("  No methods found")

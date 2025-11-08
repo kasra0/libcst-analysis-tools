@@ -1,6 +1,16 @@
 # LibCST Analysis Tools
 
-Python code analysis tools built with LibCST - extract classes, functions, and methods from Python source code.
+Python code analysis tools built with LibCST - extract classes, functions, and methods from Python source code with full type safety and IntelliSense support.
+
+## Features
+
+- 🔍 **Extract class definitions** with bases and decorators
+- 🔧 **Extract function definitions** with parameters and async support
+- 📦 **Extract class methods** with staticmethod/classmethod/property detection
+- 🎯 **Full type safety** with dataclass return types for perfect IntelliSense
+- 📁 **Analyze source code strings, files, or imported modules**
+- 🖥️ **Command-line tools** for quick analysis
+- ✨ **Accurate line numbers** using LibCST metadata
 
 ## Installation
 
@@ -76,7 +86,7 @@ python-libcst-sandbox/
 ### List Classes
 
 ```python
-from src.list_classes import list_classes, list_classes_from_file
+from libcst_analysis_tools import list_classes_from_source_code, ClassInfo
 
 # From source code string
 code = """
@@ -86,20 +96,28 @@ class MyClass:
 class AnotherClass(MyClass):
     pass
 """
-classes = list_classes(code)
+
+# Returns List[ClassInfo] - full IntelliSense support!
+classes = list_classes_from_source_code(code)
 for cls in classes:
-    print(f"Class: {cls['name']}, Bases: {cls['bases']}")
+    # Type 'cls.' and get autocomplete: name, lineno, bases, decorators
+    print(f"Class: {cls.name}, Bases: {cls.bases}, Line: {cls.lineno}")
 
 # From file
+from libcst_analysis_tools import list_classes_from_file
 classes = list_classes_from_file('mymodule.py')
+
+# From imported module
+from libcst_analysis_tools import list_classes_from_module
+import transformers
+classes = list_classes_from_module(transformers)
 ```
 
 ### List Functions
 
 ```python
-from src.list_functions import list_functions, list_functions_from_file
+from libcst_analysis_tools import list_functions_from_source_code, FunctionInfo
 
-# From source code string
 code = """
 def my_function(a, b):
     return a + b
@@ -107,20 +125,19 @@ def my_function(a, b):
 async def async_function():
     pass
 """
-functions = list_functions(code)
-for func in functions:
-    print(f"Function: {func['name']}, Params: {func['parameters']}, Async: {func['is_async']}")
 
-# From file
-functions = list_functions_from_file('mymodule.py')
+# Returns List[FunctionInfo] - full type safety!
+functions = list_functions_from_source_code(code)
+for func in functions:
+    # IntelliSense shows: name, lineno, parameters, decorators, is_async
+    print(f"Function: {func.name}, Params: {func.parameters}, Async: {func.is_async}")
 ```
 
 ### List Methods
 
 ```python
-from src.list_methods import list_methods, list_methods_from_file
+from libcst_analysis_tools import list_methods_from_source_code, MethodInfo
 
-# From source code string
 code = """
 class MyClass:
     def __init__(self):
@@ -133,11 +150,78 @@ class MyClass:
     def static_method():
         pass
 """
-methods = list_methods(code, 'MyClass')
-for method in methods:
-    print(f"Method: {method['name']}, Static: {method['is_staticmethod']}")
 
-# From file
+# Returns List[MethodInfo] with rich type information!
+methods = list_methods_from_source_code(code, 'MyClass')
+for method in methods:
+    # IntelliSense: name, lineno, parameters, decorators, is_async, 
+    #               is_staticmethod, is_classmethod, is_property
+    print(f"Method: {method.name}, Static: {method.is_staticmethod}")
+```
+
+## Type Definitions
+
+The package exports three dataclasses for type-safe results:
+
+### `ClassInfo`
+```python
+@dataclass
+class ClassInfo:
+    name: str              # Class name
+    lineno: int            # Line number where defined
+    bases: List[str]       # Base class names
+    decorators: List[str]  # Decorator names
+```
+
+### `FunctionInfo`
+```python
+@dataclass
+class FunctionInfo:
+    name: str                  # Function name
+    lineno: int                # Line number where defined
+    parameters: List[str]      # Parameter names (including *args, **kwargs)
+    decorators: List[str]      # Decorator names
+    is_async: bool             # Whether function is async
+```
+
+### `MethodInfo`
+```python
+@dataclass
+class MethodInfo:
+    name: str                  # Method name
+    lineno: int                # Line number where defined
+    parameters: List[str]      # Parameter names
+    decorators: List[str]      # Decorator names
+    is_async: bool             # Whether method is async
+    is_staticmethod: bool      # Whether decorated with @staticmethod
+    is_classmethod: bool       # Whether decorated with @classmethod
+    is_property: bool          # Whether decorated with @property
+```
+
+## API Reference
+
+### Modern API (Recommended)
+
+All functions come in three variants for flexibility:
+
+- `list_classes_from_source_code(source_code: str) -> List[ClassInfo]`
+- `list_classes_from_file(file_path: str) -> List[ClassInfo]`
+- `list_classes_from_module(module: Union[types.ModuleType, str]) -> List[ClassInfo]`
+
+- `list_functions_from_source_code(source_code: str) -> List[FunctionInfo]`
+- `list_functions_from_file(file_path: str) -> List[FunctionInfo]`
+- `list_functions_from_module(module: Union[types.ModuleType, str]) -> List[FunctionInfo]`
+
+- `list_methods_from_source_code(source_code: str, class_name: str) -> List[MethodInfo]`
+- `list_methods_from_file(file_path: str, class_name: str) -> List[MethodInfo]`
+- `list_methods_from_module(module: Union[types.ModuleType, str], class_name: str) -> List[MethodInfo]`
+
+### Backward Compatibility
+
+Legacy dict-based API still supported:
+- `list_classes(source_code: str) -> List[ClassInfo]`
+- `list_functions(source_code: str) -> List[FunctionInfo]`
+- `list_methods(source_code: str, class_name: str) -> List[MethodInfo]`
 methods = list_methods_from_file('mymodule.py', 'MyClass')
 ```
 

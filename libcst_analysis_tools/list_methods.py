@@ -1,10 +1,24 @@
 """Utility to list all methods of a class using LibCST."""
 
 from typing import List, Dict, Any, Optional, Union
+from dataclasses import dataclass
 import libcst as cst
 from libcst.metadata import PositionProvider, MetadataWrapper
 import inspect
 import types
+
+
+@dataclass
+class MethodInfo:
+    """Information about a method definition."""
+    name: str
+    lineno: int
+    parameters: List[str]
+    decorators: List[str]
+    is_async: bool
+    is_staticmethod: bool
+    is_classmethod: bool
+    is_property: bool
 
 
 
@@ -15,7 +29,7 @@ class MethodCollector(cst.CSTVisitor):
     
     def __init__(self, target_class_name: str):
         self.target_class_name = target_class_name
-        self.methods: List[Dict[str, Any]] = []
+        self.methods: List[MethodInfo] = []
         self._current_class: Optional[str] = None
         self._class_depth = 0
     
@@ -35,16 +49,16 @@ class MethodCollector(cst.CSTVisitor):
     def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
         """Visit a function definition and collect it if it's a method of the target class."""
         if self._current_class == self.target_class_name and self._class_depth == 1:
-            method_info = {
-                "name": node.name.value,
-                "lineno": self._get_line_number(node),
-                "parameters": self._get_parameters(node.params),
-                "decorators": [self._get_decorator_name(dec) for dec in node.decorators],
-                "is_async": isinstance(node, cst.FunctionDef) and node.asynchronous is not None,
-                "is_staticmethod": self._has_decorator(node, "staticmethod"),
-                "is_classmethod": self._has_decorator(node, "classmethod"),
-                "is_property": self._has_decorator(node, "property"),
-            }
+            method_info = MethodInfo(
+                name=node.name.value,
+                lineno=self._get_line_number(node),
+                parameters=self._get_parameters(node.params),
+                decorators=[self._get_decorator_name(dec) for dec in node.decorators],
+                is_async=isinstance(node, cst.FunctionDef) and node.asynchronous is not None,
+                is_staticmethod=self._has_decorator(node, "staticmethod"),
+                is_classmethod=self._has_decorator(node, "classmethod"),
+                is_property=self._has_decorator(node, "property"),
+            )
             self.methods.append(method_info)
     
     def _get_line_number(self, node: cst.FunctionDef) -> int:
@@ -99,7 +113,7 @@ class MethodCollector(cst.CSTVisitor):
         return False
 
 
-def list_methods_from_source_code(source_code: str, class_name: str) -> List[Dict[str, Any]]:
+def list_methods_from_source_code(source_code: str, class_name: str) -> List[MethodInfo]:
     """
     List all methods of a specific class in the given Python source code.
     
@@ -108,7 +122,7 @@ def list_methods_from_source_code(source_code: str, class_name: str) -> List[Dic
         class_name: Name of the class to extract methods from
         
     Returns:
-        A list of dictionaries containing method information:
+        A list of MethodInfo objects containing method information:
         - name: method name
         - lineno: line number where method is defined
         - parameters: list of parameter names
@@ -134,7 +148,7 @@ def list_methods_from_source_code(source_code: str, class_name: str) -> List[Dic
         >>> methods = list_methods_from_source_code(code, 'MyClass')
         >>> len(methods)
         3
-        >>> methods[0]['name']
+        >>> methods[0].name
         '__init__'
     """
     try:
@@ -152,7 +166,7 @@ def list_methods_from_source_code(source_code: str, class_name: str) -> List[Dic
         raise ValueError(f"Failed to parse source code: {e}")
 
 
-def list_methods_from_file(file_path: str, class_name: str) -> List[Dict[str, Any]]:
+def list_methods_from_file(file_path: str, class_name: str) -> List[MethodInfo]:
     """
     List all methods of a specific class in a Python file.
     
@@ -168,7 +182,7 @@ def list_methods_from_file(file_path: str, class_name: str) -> List[Dict[str, An
     return list_methods_from_source_code(source_code, class_name)
 
 
-def list_methods_from_module(module: Union[types.ModuleType, str], class_name: str) -> List[Dict[str, Any]]:
+def list_methods_from_module(module: Union[types.ModuleType, str], class_name: str) -> List[MethodInfo]:
     """
     List all methods of a specific class in an imported Python module.
     
@@ -177,7 +191,7 @@ def list_methods_from_module(module: Union[types.ModuleType, str], class_name: s
         class_name: Name of the class to extract methods from
         
     Returns:
-        A list of dictionaries containing method information
+        A list of MethodInfo objects containing method information
         
     Example:
         >>> import my_module
@@ -211,7 +225,7 @@ def list_methods_from_module(module: Union[types.ModuleType, str], class_name: s
 
 
 # Backward compatibility alias
-def list_methods(source_code: str, class_name: str) -> List[Dict[str, Any]]:
+def list_methods(source_code: str, class_name: str) -> List[MethodInfo]:
     """Backward compatibility alias for list_methods_from_source_code."""
     return list_methods_from_source_code(source_code, class_name)
 
@@ -265,18 +279,18 @@ class AnotherClass:
         print("Found methods in MyClass:")
         for method in methods:
             type_markers = []
-            if method['is_staticmethod']:
+            if method.is_staticmethod:
                 type_markers.append('@staticmethod')
-            if method['is_classmethod']:
+            if method.is_classmethod:
                 type_markers.append('@classmethod')
-            if method['is_property']:
+            if method.is_property:
                 type_markers.append('@property')
-            if method['is_async']:
+            if method.is_async:
                 type_markers.append('async')
             
             marker_str = ' '.join(type_markers) + ' ' if type_markers else ''
-            params = ', '.join(method['parameters'])
-            print(f"  - {marker_str}{method['name']}({params})")
+            params = ', '.join(method.parameters)
+            print(f"  - {marker_str}{method.name}({params})")
     
     # Custom parser for list_methods because it needs a class name
     parser = argparse.ArgumentParser(
@@ -332,21 +346,20 @@ Examples:
                     for method in methods:
                         # Build method type indicators
                         indicators = []
-                        if method.get('is_async', False):
+                        if method.is_async:
                             indicators.append("async")
-                        if method.get('is_staticmethod', False):
+                        if method.is_staticmethod:
                             indicators.append("@staticmethod")
-                        elif method.get('is_classmethod', False):
+                        elif method.is_classmethod:
                             indicators.append("@classmethod")
-                        elif method.get('is_property', False):
+                        elif method.is_property:
                             indicators.append("@property")
                         
                         prefix = " ".join(indicators) + " " if indicators else ""
-                        params = ", ".join(method.get('parameters', []))
-                        decorators = method.get('decorators', [])
-                        decorators_str = f" (decorators: {decorators})" if decorators else ""
+                        params = ", ".join(method.parameters)
+                        decorators_str = f" (decorators: {method.decorators})" if method.decorators else ""
                         
-                        print(f"  - {prefix}{method['name']}({params}) (line {method['lineno']}){decorators_str}")
+                        print(f"  - {prefix}{method.name}({params}) (line {method.lineno}){decorators_str}")
                 else:
                     print(f"  No methods found in class '{args.class_name}'")
             except Exception as e:
