@@ -32,7 +32,7 @@ fi
 
 function watch_and_run {
     watchmedo shell-command \
-        --patterns='**/*.py;**/*.txt' \
+        --patterns='**/*.py;**/*.txt;**/*.tcss' \
         --recursive \
         --command="bash -c \"run_script $1\"" 
 }
