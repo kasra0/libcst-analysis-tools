@@ -3,6 +3,22 @@ TreeComponent {
     height: 100%;
 }
 
+DirectoryTreeComponent {
+    width: 30%;
+    min-width: 30;
+    height: 100%;
+}
+
+#filesystem-tree {
+    width: 30%;
+    min-width: 30;
+}
+
+#content-tree {
+    width: 30%;
+    min-width: 30;
+}
+
 TableComponent {
     height: 70%;
     width: 100%;        
@@ -13,6 +29,7 @@ LogComponent {
     height: 1fr;
     width: 100%;
 }
+
 Input{
  
 }
@@ -22,10 +39,10 @@ DataTable {
     border: solid green;
 }
 
-#tree-view {
+Tree {
     scrollbar-gutter: stable;
     overflow: auto;
-    width: 50;
+    width: 100%;
     height: 100%;
 }
 
