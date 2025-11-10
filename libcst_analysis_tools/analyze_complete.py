@@ -6,6 +6,8 @@ from libcst.metadata import PositionProvider, MetadataWrapper
 from .list_classes import ClassInfo
 from .list_methods import MethodInfo
 
+ClassWithMethods = tuple[ClassInfo, list[MethodInfo]]
+ClassesWithMethods = list[ClassWithMethods]
 
 class CompleteModuleAnalyzer(cst.CSTVisitor):
     """Collect all classes and their methods in a single traversal."""
@@ -122,14 +124,14 @@ def analyze_module_complete(source_code: str) -> Dict[str, List[MethodInfo]]:
         >>> result['MyClass'][0].name
         'method1'
     """
-    tree = cst.parse_module(source_code)
+    tree    = cst.parse_module(source_code)
     wrapper = MetadataWrapper(tree)
     visitor = CompleteModuleAnalyzer()
     wrapper.visit(visitor)
     
     return visitor.methods_by_class
 
-def get_all_classes_with_methods_from_file(file_path: str) -> List[tuple[ClassInfo, List[MethodInfo]]]:
+def get_all_classes_with_methods_from_file(file_path: str) -> ClassesWithMethods:
     """
     Get all classes with their methods from a Python file in ONE parsing pass.
     
@@ -155,7 +157,7 @@ def get_all_classes_with_methods_from_file(file_path: str) -> List[tuple[ClassIn
             for cls in visitor.classes]
 
 
-def get_all_classes_with_methods(source_code: str) -> List[tuple[ClassInfo, List[MethodInfo]]]:
+def get_all_classes_with_methods(source_code: str) -> ClassesWithMethods:
     """
     Get all classes with their methods in ONE parsing pass.
     

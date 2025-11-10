@@ -1,74 +1,88 @@
-from typing import Union,List
-from textual.app         import App, ComposeResult
+from typing import List, Generic, TypeVar, Protocol
+from textual.app         import ComposeResult
 from textual.widget      import Widget 
-from textual.widgets     import Header,Footer, Tree, DataTable, RichLog,Label
+from textual.widgets     import Tree
 from textual.widgets     import Input
 from libcst_analysis_tools.list_classes  import ClassInfo
 from libcst_analysis_tools.list_methods  import MethodInfo
-from libcst_analysis_tools.analyze_complete import get_all_classes_with_methods_from_file
-import inspect
-from datetime import datetime, timezone
-from libcst_analysis_tools.view.logger import Logger
+from libcst_analysis_tools.view.logger   import Logger
 
-TreeNodeEvent = Union[Tree.NodeCollapsed, Tree.NodeExpanded, Tree.NodeHighlighted, Tree.NodeSelected]
+ClassWithMethods = tuple[ClassInfo, list[MethodInfo]]
+ClassesWithMethods = list[ClassWithMethods]
 
-def build_tree_from_classes(classes_with_methods:List[tuple[ClassInfo, List[MethodInfo]]],id)->Tree:
-    tree: Tree[str] = Tree("Classes and Methods",id=id)
-    tree.root.expand()
+# Generic type variable
+T = TypeVar('T')
+
+# Protocol for renderer (interface)
+class TreeRenderer(Protocol[T]):
+    """Protocol defining the interface for tree renderers."""
     
-    for cls, methods in classes_with_methods:
-        class_emoji   = "🧱"
-        method_emoji  = "⚙️"
-        package_emoji = "📦"
-        class_node = tree.root.add(f"{class_emoji} {cls.name}", expand=True)
-        for method in methods:
-            class_node.add_leaf(f"{method_emoji}  {method.name} ([lightgreen]@{method.lineno}[/lightgreen])")
-    return tree
+    def fill_tree(self, tree: Tree, data: List[T]) -> None:
+        """Fill the tree with data."""
+        ...
+    
+    def filter_data(self, data: List[T], filter_text: str) -> List[T]:
+        """Filter data based on filter text."""
+        ...
 
-class TreeComponent(Widget):
-    def __init__(self):
+
+# Concrete renderer for ClassesWithMethods
+class ClassMethodsTreeRenderer(TreeRenderer[ClassWithMethods]):
+    """Renderer for ClassesWithMethods data."""
+    
+    def fill_tree(self, tree: Tree, data: ClassesWithMethods) -> None:
+        tree.clear()
+        tree.root.expand()
+        
+        for cls, methods in data:
+            class_emoji = "🧱"
+            method_emoji = "⚙️"
+            label = f"{class_emoji} {cls.name}"
+            class_node = tree.root.add(label, expand=True)
+            for method in methods:
+                label = f"{method_emoji}  {method.name} ([magenta]@{method.lineno}[/magenta])"
+                class_node.add_leaf(label)
+    
+    def filter_data(self, data: ClassesWithMethods, filter_text: str) -> ClassesWithMethods:
+        if filter_text == "":
+            return data
+        
+        filtered_data: ClassesWithMethods = []
+        for cls, methods in data:
+            filtered_methods = [m for m in methods if m.name.lower().startswith(filter_text)]
+            if filtered_methods:
+                filtered_data.append((cls, filtered_methods))
+        return filtered_data
+
+
+
+class TreeComponent(Widget, Generic[T]):
+    def __init__(self, data: List[T], renderer: TreeRenderer[T], title: str = "Tree View"):
         super().__init__()
-        # Store original data
-        self.all_classes_with_methods = get_all_classes_with_methods_from_file(inspect.getfile(App))
-        # Sort by classes and methods alphabetically
-        self.all_classes_with_methods.sort(key=lambda x: x[0].name)
-        for cls, methods in self.all_classes_with_methods:
-            methods.sort(key=lambda m: m.name)
+        self.data = data
+        self.renderer = renderer
+        self.title = title
+        self.tree_view_id = "tree-view"
+        self.tree_filter_input_id = "filter-input"
     
     def compose(self) -> ComposeResult:
-        yield Input(placeholder="Filter methods...", id="filter-input")
-        yield build_tree_from_classes(self.all_classes_with_methods, "tree-view")
+        yield Input(placeholder="Filter methods...", id=self.tree_filter_input_id)
+        tree = Tree(self.title, id=self.tree_view_id)
+        self.renderer.fill_tree(tree, self.data)
+        yield tree
     
+    def get_filtered_data(self, filter_text: str) -> List[T]:
+        return self.renderer.filter_data(self.data, filter_text.strip().lower())
+    
+    def filter_tree(self, filter_text: str) -> None:
+        filtered_data = self.get_filtered_data(filter_text)
+        tree = self.query_one(f"#{self.tree_view_id}", Tree)
+        self.renderer.fill_tree(tree, filtered_data)
+
     def on_input_changed(self, event: Input.Changed) -> None:
         """Filter tree when input changes."""
         Logger._log_Input_event(self, event)
         self.filter_tree(event.value)
-        
-    def filter_tree(self, filter_text: str) -> None:
-        # Filter methods by name (startswith)
-        filtered_data: List[tuple[ClassInfo, List[MethodInfo]]] = []
-        for cls, methods in self.all_classes_with_methods:
-            if filter_text == "":
-                # No filter, include all methods
-                filtered_data.append((cls, methods))
-            else:
-                # Filter methods that start with the filter text
-                filtered_methods = [m for m in methods if m.name.lower().startswith(filter_text)]
-                # Only include class if it has matching methods
-                if filtered_methods:
-                    filtered_data.append((cls, filtered_methods))
-        
-        # Rebuild tree with filtered data
-        tree = self.query_one("#tree-view", Tree)
-        tree.clear()
-        tree.root.expand()
-        
-        for cls, methods in filtered_data:
-            class_emoji = "🧱"
-            method_emoji = "⚙️"
-            class_node = tree.root.add(f"{class_emoji} {cls.name}", expand=True)
-            for method in methods:
-                class_node.add_leaf(f"{method_emoji}  {method.name} ([lightgreen]@{method.lineno}[/lightgreen])")
 
     def on_tree_node_collapsed(self, event: Tree.NodeCollapsed) -> None:
         Logger._log_tree_event(self,event)
@@ -81,7 +95,3 @@ class TreeComponent(Widget):
 
     def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
         Logger._log_tree_event(self,event)
-    
-#helper function to format log messages
-def format_log_message(componentType: str, tree_id: str, eventName: str, value: str) -> str:
-        return f"[magenta]{componentType:20}[/magenta] | [cyan]{eventName:20}[/cyan] | {tree_id:20} | {value:20}"
