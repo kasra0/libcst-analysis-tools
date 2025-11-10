@@ -57,7 +57,7 @@ class ClassMethodsTreeRenderer(TreeRenderer[ClassWithMethods]):
 
 
 class TreeComponent(Widget, Generic[T]):
-    def __init__(self, data: List[T], renderer: TreeRenderer[T], title: str = "Tree View"):
+    def __init__(self, data: List[T], renderer: TreeRenderer[T], title: str = "Root"):
         super().__init__()
         self.data = data
         self.renderer = renderer

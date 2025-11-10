@@ -10,8 +10,14 @@ def tabular_data(rows_count)->list[tuple]:
     # Header
     list_.append(("ID", "Name", "Country", "Time (s)"))
     for i in range(rows_count):
-        list_.append( (i, RANDOM_CELEBRITIES[i % len(RANDOM_CELEBRITIES)], RANDOM_COUNTRIES[i % len(RANDOM_COUNTRIES)], 50.0 + i*0.1) )
+        celebrity=RANDOM_CELEBRITIES[i % len(RANDOM_CELEBRITIES)]
+        country  =RANDOM_COUNTRIES[i % len(RANDOM_COUNTRIES)]
+        time=50.0 + i*0.1
+        list_.append( (i, celebrity, country, time) )
     return list_
 
 def tree_data():
     return get_all_classes_with_methods_from_file(inspect.getfile(App))
+def tree_title():
+    # just get the 2 last parts of the path
+    return f"Classes and Methods in {'/'.join(inspect.getfile(App).split('/')[-2:])}"

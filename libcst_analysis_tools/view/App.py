@@ -22,7 +22,7 @@ class RootApp(App):
         yield Header()
         with Container():
             with Horizontal():
-                yield TreeComponent(data=store.tree_data(), renderer=ClassMethodsTreeRenderer())
+                yield TreeComponent(data=store.tree_data(), renderer=ClassMethodsTreeRenderer(),title=store.tree_title())
                 with Vertical(id="right-panel"):
                     yield TableComponent(store.tabular_data(100))
                     yield LogComponent()
