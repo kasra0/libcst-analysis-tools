@@ -8,9 +8,10 @@ import textual
 from libcst_analysis_tools.view.Components.TreeComponent  import TreeComponent
 from libcst_analysis_tools.view.Components.DirectoryTreeComponent import DirectoryTreeComponent
 from libcst_analysis_tools.view.Renderer.TreeRenderer  import ClassMethodsTreeRenderer
+from libcst_analysis_tools.view.Renderer.CompleteModuleTreeRenderer import CompleteModuleTreeRenderer
 from libcst_analysis_tools.view.Components.TableComponent import TableComponent
 from libcst_analysis_tools.view.Components.LogComponent   import LogComponent
-from libcst_analysis_tools.analyze_complete import get_all_classes_with_methods_from_file
+from libcst_analysis_tools.analyze_complete import get_all_classes_with_methods_from_file, get_complete_module_info_from_file
 
 import  libcst_analysis_tools.store.store as store 
 
@@ -51,11 +52,17 @@ class RootApp(App):
         # Only load if it's a Python file
         if file_path.endswith('.py'):
             try:
-                classes_with_methods = get_all_classes_with_methods_from_file(file_path)
+                # Use complete module analysis
+                module_info = get_complete_module_info_from_file(file_path)
                 
-                # Update the content tree
+                # Update the content tree with new renderer
                 content_tree = self.query_one("#content-tree", TreeComponent)
-                content_tree.reload_data(classes_with_methods)
+                
+                # Switch to CompleteModuleTreeRenderer if not already using it
+                if not isinstance(content_tree.renderer, CompleteModuleTreeRenderer):
+                    content_tree.renderer = CompleteModuleTreeRenderer()
+                
+                content_tree.reload_data(module_info)
             except Exception as e:
                 # Log error if needed
                 pass

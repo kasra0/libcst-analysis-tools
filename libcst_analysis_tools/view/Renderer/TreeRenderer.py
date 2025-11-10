@@ -1,4 +1,4 @@
-from typing import List, TypeVar, Protocol
+from typing import List, TypeVar, Protocol, Union
 from textual.widgets     import Tree
 from libcst_analysis_tools.list_classes  import ClassInfo
 from libcst_analysis_tools.list_methods  import MethodInfo
@@ -14,11 +14,11 @@ T = TypeVar('T')
 class TreeRenderer(Protocol[T]):
     """Protocol defining the interface for tree renderers."""
     
-    def fill_tree(self, tree: Tree, data: List[T]) -> None:
+    def fill_tree(self, tree: Tree, data: Union[List[T], T]) -> None:
         """Fill the tree with data."""
         ...
     
-    def filter_data(self, data: List[T], filter_text: str) -> List[T]:
+    def filter_data(self, data: Union[List[T], T], filter_text: str) -> Union[List[T], T]:
         """Filter data based on filter text."""
         ...
 
@@ -27,11 +27,17 @@ class TreeRenderer(Protocol[T]):
 class ClassMethodsTreeRenderer(TreeRenderer[ClassWithMethods]):
     """Renderer for ClassesWithMethods data."""
     
-    def fill_tree(self, tree: Tree, data: ClassesWithMethods) -> None:
+    def fill_tree(self, tree: Tree, data: Union[ClassesWithMethods, List[ClassWithMethods]]) -> None:
+        # Handle both list and direct ClassesWithMethods
+        if isinstance(data, list) and len(data) > 0 and isinstance(data[0], tuple):
+            classes_data = data
+        else:
+            classes_data = []
+        
         tree.clear()
         tree.root.expand()
         
-        for cls, methods in data:
+        for cls, methods in classes_data:
             class_emoji = "🧱"
             method_emoji = "⚙️"
             label = f"{class_emoji} {cls.name}"
@@ -40,7 +46,10 @@ class ClassMethodsTreeRenderer(TreeRenderer[ClassWithMethods]):
                 label = f"{method_emoji}  {method.name} ([magenta]@{method.lineno}[/magenta])"
                 class_node.add_leaf(label)
     
-    def filter_data(self, data: ClassesWithMethods, filter_text: str) -> ClassesWithMethods:
+    def filter_data(self, data: Union[ClassesWithMethods, List[ClassWithMethods]], filter_text: str) -> Union[ClassesWithMethods, List[ClassWithMethods]]:
+        if not isinstance(data, list):
+            return data
+            
         if filter_text == "":
             return data
         

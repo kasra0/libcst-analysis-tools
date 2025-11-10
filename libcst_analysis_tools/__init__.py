@@ -8,6 +8,13 @@ __version__ = "0.3.0"
 from .list_classes   import ClassInfo
 from .list_functions import FunctionInfo
 from .list_methods   import MethodInfo
+from .analyze_complete import (
+    ImportInfo,
+    VariableInfo,
+    ModuleInfo,
+    get_complete_module_info,
+    get_complete_module_info_from_file
+)
 
 # Modern API (recommended)
 from .list_classes   import list_classes_from_source_code,   list_classes_from_file,   list_classes_from_module
@@ -24,6 +31,13 @@ __all__ = [
     "ClassInfo",
     "FunctionInfo",
     "MethodInfo",
+    "ImportInfo",
+    "VariableInfo",
+    "ModuleInfo",
+    
+    # Complete module analysis
+    "get_complete_module_info",
+    "get_complete_module_info_from_file",
     
     # Modern API
     "list_classes_from_source_code",

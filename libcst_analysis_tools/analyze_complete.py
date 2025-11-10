@@ -1,6 +1,7 @@
 """Analyze complete module structure in a single pass."""
 
-from typing import Dict, List
+from typing import Dict, List, Optional
+from dataclasses import dataclass
 import libcst as cst
 from libcst.metadata import PositionProvider, MetadataWrapper
 from .list_classes import ClassInfo
@@ -9,16 +10,139 @@ from .list_methods import MethodInfo
 ClassWithMethods = tuple[ClassInfo, list[MethodInfo]]
 ClassesWithMethods = list[ClassWithMethods]
 
+@dataclass
+class ImportInfo:
+    """Information about an import statement."""
+    name: str  # The module or item being imported
+    lineno: int
+    alias: Optional[str] = None  # The 'as' alias if any
+    is_from: bool = False  # True for 'from X import Y'
+    module: Optional[str] = None  # The module name in 'from X import Y'
+
+@dataclass
+class FunctionInfo:
+    """Information about a module-level function."""
+    name: str
+    lineno: int
+    parameters: List[str]
+    decorators: List[str]
+    is_async: bool
+
+@dataclass
+class VariableInfo:
+    """Information about a class variable or module constant."""
+    name: str
+    lineno: int
+    value: Optional[str] = None  # String representation of the value
+    is_class_var: bool = False  # True if it's a class variable
+
+@dataclass
+class ModuleInfo:
+    """Complete information about a module."""
+    imports: List[ImportInfo]
+    functions: List[FunctionInfo]
+    classes: List[ClassInfo]
+    methods_by_class: Dict[str, List[MethodInfo]]
+    class_variables: Dict[str, List[VariableInfo]]  # class_name -> variables
+    module_constants: List[VariableInfo]
+
 class CompleteModuleAnalyzer(cst.CSTVisitor):
-    """Collect all classes and their methods in a single traversal."""
+    """Collect all classes, methods, functions, variables, and imports in a single traversal."""
     
     METADATA_DEPENDENCIES = (PositionProvider,)
     
     def __init__(self):
         self.classes: List[ClassInfo] = []
         self.methods_by_class: Dict[str, List[MethodInfo]] = {}
+        self.class_variables: Dict[str, List[VariableInfo]] = {}
+        self.functions: List[FunctionInfo] = []
+        self.imports: List[ImportInfo] = []
+        self.module_constants: List[VariableInfo] = []
+        
         self._current_class: str | None = None
         self._class_depth = 0
+        self._function_depth = 0
+    
+    def visit_Import(self, node: cst.Import) -> None:
+        """Visit an import statement."""
+        position = self.get_metadata(PositionProvider, node)
+        for name in node.names:
+            if isinstance(name, cst.ImportAlias):
+                import_name = name.name.value if isinstance(name.name, cst.Name) else self._get_dotted_name(name.name)
+                alias_name = None
+                if name.asname and isinstance(name.asname.name, cst.Name):
+                    alias_name = name.asname.name.value
+                
+                import_info = ImportInfo(
+                    name=import_name,
+                    lineno=position.start.line if position else -1,  # type: ignore
+                    alias=alias_name,
+                    is_from=False
+                )
+                self.imports.append(import_info)
+    
+    def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
+        """Visit a from...import statement."""
+        position = self.get_metadata(PositionProvider, node)
+        module_name = self._get_dotted_name(node.module) if node.module else ""
+        
+        if isinstance(node.names, cst.ImportStar):
+            import_info = ImportInfo(
+                name="*",
+                lineno=position.start.line if position else -1,  # type: ignore
+                module=module_name,
+                is_from=True
+            )
+            self.imports.append(import_info)
+        else:
+            for name in node.names:
+                if isinstance(name, cst.ImportAlias):
+                    import_name = name.name.value if isinstance(name.name, cst.Name) else self._get_dotted_name(name.name)
+                    alias_name = None
+                    if name.asname and isinstance(name.asname.name, cst.Name):
+                        alias_name = name.asname.name.value
+                    
+                    import_info = ImportInfo(
+                        name=import_name,
+                        lineno=position.start.line if position else -1,  # type: ignore
+                        alias=alias_name,
+                        module=module_name,
+                        is_from=True
+                    )
+                    self.imports.append(import_info)
+    
+    def visit_Assign(self, node: cst.Assign) -> None:
+        """Visit an assignment to capture class variables and module constants."""
+        position = self.get_metadata(PositionProvider, node)
+        
+        # Get variable names
+        for target in node.targets:
+            if isinstance(target.target, cst.Name):
+                var_name = target.target.value
+                # Try to get a string representation of the value
+                value_str = None
+                try:
+                    value_str = cst.Module([]).code_for_node(node.value)
+                    if len(value_str) > 100:  # Truncate long values
+                        value_str = value_str[:100] + "..."
+                except Exception:
+                    pass
+                
+                var_info = VariableInfo(
+                    name=var_name,
+                    lineno=position.start.line if position else -1,  # type: ignore
+                    value=value_str,
+                    is_class_var=self._current_class is not None
+                )
+                
+                if self._current_class and self._class_depth == 1 and self._function_depth == 0:
+                    # Class variable
+                    if self._current_class not in self.class_variables:
+                        self.class_variables[self._current_class] = []
+                    self.class_variables[self._current_class].append(var_info)
+                elif self._class_depth == 0 and self._function_depth == 0:
+                    # Module-level constant
+                    self.module_constants.append(var_info)
     
     def visit_ClassDef(self, node: cst.ClassDef) -> bool:
         if self._class_depth == 0:  # Only top-level classes
@@ -42,10 +166,11 @@ class CompleteModuleAnalyzer(cst.CSTVisitor):
         if self._class_depth == 0:
             self._current_class = None
     
-    def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
+    def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
+        position = self.get_metadata(PositionProvider, node)
+        
         if self._current_class and self._class_depth == 1:
-            position = self.get_metadata(PositionProvider, node)
-            
+            # This is a method
             method_info = MethodInfo(
                 name=node.name.value,
                 lineno=position.start.line if position else -1,  # type: ignore
@@ -57,6 +182,31 @@ class CompleteModuleAnalyzer(cst.CSTVisitor):
                 is_property=self._has_decorator(node, "property")
             )
             self.methods_by_class[self._current_class].append(method_info)
+        elif self._class_depth == 0:
+            # This is a module-level function
+            function_info = FunctionInfo(
+                name=node.name.value,
+                lineno=position.start.line if position else -1,  # type: ignore
+                parameters=self._get_parameters(node.params),
+                decorators=[self._get_decorator_name(dec) for dec in node.decorators],
+                is_async=node.asynchronous is not None
+            )
+            self.functions.append(function_info)
+        
+        self._function_depth += 1
+        return True
+    
+    def leave_FunctionDef(self, node: cst.FunctionDef) -> None:
+        self._function_depth -= 1
+    
+    def _get_dotted_name(self, node: cst.BaseExpression) -> str:
+        """Get a dotted name like 'a.b.c' from a node."""
+        if isinstance(node, cst.Name):
+            return node.value
+        elif isinstance(node, cst.Attribute):
+            value_str = self._get_dotted_name(node.value)
+            return f"{value_str}.{node.attr.value}"
+        return str(node)
     
     def _get_base_name(self, base: cst.BaseExpression) -> str:
         """Extract the name of a base class."""
@@ -100,6 +250,52 @@ class CompleteModuleAnalyzer(cst.CSTVisitor):
                 if dec.decorator.value == decorator_name:
                     return True
         return False
+
+
+def get_complete_module_info(source_code: str) -> ModuleInfo:
+    """
+    Get complete module information including imports, functions, classes, methods, and variables.
+    
+    Args:
+        source_code: Python source code as a string
+        
+    Returns:
+        ModuleInfo object containing all module elements
+        
+    Example:
+        >>> info = get_complete_module_info(code)
+        >>> print(f"Imports: {len(info.imports)}")
+        >>> print(f"Functions: {len(info.functions)}")
+        >>> print(f"Classes: {len(info.classes)}")
+    """
+    tree = cst.parse_module(source_code)
+    wrapper = MetadataWrapper(tree)
+    visitor = CompleteModuleAnalyzer()
+    wrapper.visit(visitor)
+    
+    return ModuleInfo(
+        imports=visitor.imports,
+        functions=visitor.functions,
+        classes=visitor.classes,
+        methods_by_class=visitor.methods_by_class,
+        class_variables=visitor.class_variables,
+        module_constants=visitor.module_constants
+    )
+
+
+def get_complete_module_info_from_file(file_path: str) -> ModuleInfo:
+    """
+    Get complete module information from a Python file.
+    
+    Args:
+        file_path: Path to the Python file
+        
+    Returns:
+        ModuleInfo object containing all module elements
+    """
+    with open(file_path, 'r', encoding='utf-8') as f:
+        source_code = f.read()
+    return get_complete_module_info(source_code)
 
 
 def analyze_module_complete(source_code: str) -> Dict[str, List[MethodInfo]]:

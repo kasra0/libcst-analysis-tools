@@ -1,4 +1,4 @@
-from typing import List, Generic, TypeVar
+from typing import List, Generic, TypeVar, Union
 from textual.app         import ComposeResult
 from textual.widget      import Widget 
 from textual.widgets     import Tree
@@ -10,7 +10,7 @@ T = TypeVar('T')
 
 
 class TreeComponent(Widget, Generic[T]):
-    def __init__(self, data: List[T], renderer: TreeRenderer[T], title: str = "Root", component_id: str = "tree-component"):
+    def __init__(self, data: Union[List[T], T], renderer: TreeRenderer[T], title: str = "Root", component_id: str = "tree-component"):
         super().__init__(id=component_id)
         self.data = data
         self.renderer = renderer
@@ -24,7 +24,7 @@ class TreeComponent(Widget, Generic[T]):
         self.renderer.fill_tree(tree, self.data)
         yield tree
     
-    def get_filtered_data(self, filter_text: str) -> List[T]:
+    def get_filtered_data(self, filter_text: str) -> Union[List[T], T]:
         return self.renderer.filter_data(self.data, filter_text.strip().lower())
     
     def filter_tree(self, filter_text: str) -> None:
@@ -32,7 +32,7 @@ class TreeComponent(Widget, Generic[T]):
         tree = self.query_one(f"#{self.tree_view_id}", Tree)
         self.renderer.fill_tree(tree, filtered_data)
     
-    def reload_data(self, new_data: List[T]) -> None:
+    def reload_data(self, new_data: Union[List[T], T]) -> None:
         """Reload tree with new data."""
         self.data = new_data
         tree = self.query_one(f"#{self.tree_view_id}", Tree)
