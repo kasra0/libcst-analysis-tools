@@ -40,6 +40,10 @@ class TreeComponent(Widget, Generic[T]):
 
     def on_input_changed(self, event: Input.Changed) -> None:
         """Filter tree when input changes."""
+        # Only handle input changes from this component's filter input
+        if event.input.id != self.tree_filter_input_id:
+            return
+        
         Logger._log_Input_event(self, event)
         self.filter_tree(event.value)
 

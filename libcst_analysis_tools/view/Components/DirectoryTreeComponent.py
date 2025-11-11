@@ -3,6 +3,7 @@
 from textual.app     import ComposeResult
 from textual.widget  import Widget
 from textual.widgets import DirectoryTree, Input
+from textual.message import Message
 from rich.text import Text
 from pathlib import Path
 from libcst_analysis_tools.view.logger   import Logger
@@ -57,6 +58,12 @@ class FilteredDirectoryTree(DirectoryTree):
 class DirectoryTreeComponent(Widget):
     """Component that wraps DirectoryTree for browsing file systems with filtering."""
     
+    class PythonFileSelected(Message):
+        """Message emitted when a Python file is selected."""
+        def __init__(self, file_path: str):
+            super().__init__()
+            self.file_path = file_path
+    
     def __init__(self, path: str, component_id: str = "directory-tree"):
         super().__init__(id=component_id)
         self.path = path
@@ -67,6 +74,14 @@ class DirectoryTreeComponent(Widget):
         """Create child widgets."""
         yield Input(placeholder="Filter files/folders...", id=self.filter_input_id)
         yield FilteredDirectoryTree(self.path, id=self.tree_id)
+    
+    def on_directory_tree_file_selected(self, event: DirectoryTree.FileSelected) -> None:
+        """Handle file selection and emit custom message for Python files."""
+        file_path = str(event.path)
+        
+        # Only emit message for Python files
+        if file_path.endswith('.py'):
+            self.post_message(self.PythonFileSelected(file_path))
     
     def on_input_changed(self, event: Input.Changed) -> None:
         """Filter directory tree when input changes."""
