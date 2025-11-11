@@ -96,4 +96,4 @@ class DirectoryTreeComponent(Widget):
         tree.filter_text = filter_text
         tree.reload()
         
-        Logger._log_Input_event(self, event)
+        Logger._log(self, event)

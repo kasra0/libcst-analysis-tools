@@ -37,6 +37,13 @@ class VariableInfo:
     is_class_var: bool = False  # True if it's a class variable
 
 @dataclass
+class CallGraphInfo:
+    """Call graph information for a callable (function/method)."""
+    name: str  # The callable name
+    incoming: List[str] = field(default_factory=list)  # Who calls this
+    outgoing: List[str] = field(default_factory=list)  # What this calls
+
+@dataclass
 class ModuleInfo:
     """Complete information about a module."""
     imports: List[ImportInfo] = field(default_factory=list)
@@ -45,6 +52,7 @@ class ModuleInfo:
     methods_by_class: Dict[str, List[MethodInfo]] = field(default_factory=dict)
     class_variables: Dict[str, List[VariableInfo]] = field(default_factory=dict)  # class_name -> variables
     module_constants: List[VariableInfo] = field(default_factory=list)
+    call_graph: Dict[str, CallGraphInfo] = field(default_factory=dict)  # callable_name -> call graph
 
 class CompleteModuleAnalyzer(cst.CSTVisitor):
     """Collect all classes, methods, functions, variables, and imports in a single traversal."""
@@ -58,8 +66,10 @@ class CompleteModuleAnalyzer(cst.CSTVisitor):
         self.functions: List[FunctionInfo] = []
         self.imports: List[ImportInfo] = []
         self.module_constants: List[VariableInfo] = []
+        self.call_graph: Dict[str, CallGraphInfo] = {}
         
         self._current_class: str | None = None
+        self._current_function: str | None = None  # Track current function for call graph
         self._class_depth = 0
         self._function_depth = 0
     
@@ -171,6 +181,13 @@ class CompleteModuleAnalyzer(cst.CSTVisitor):
         
         if self._current_class and self._class_depth == 1:
             # This is a method
+            method_name = f"{self._current_class}.{node.name.value}"
+            self._current_function = method_name
+            
+            # Initialize call graph for this method
+            if method_name not in self.call_graph:
+                self.call_graph[method_name] = CallGraphInfo(name=method_name)
+            
             method_info = MethodInfo(
                 name=node.name.value,
                 lineno=position.start.line if position else -1,  # type: ignore
@@ -184,6 +201,13 @@ class CompleteModuleAnalyzer(cst.CSTVisitor):
             self.methods_by_class[self._current_class].append(method_info)
         elif self._class_depth == 0:
             # This is a module-level function
+            func_name = node.name.value
+            self._current_function = func_name
+            
+            # Initialize call graph for this function
+            if func_name not in self.call_graph:
+                self.call_graph[func_name] = CallGraphInfo(name=func_name)
+            
             function_info = FunctionInfo(
                 name=node.name.value,
                 lineno=position.start.line if position else -1,  # type: ignore
@@ -198,6 +222,46 @@ class CompleteModuleAnalyzer(cst.CSTVisitor):
     
     def leave_FunctionDef(self, node: cst.FunctionDef) -> None:
         self._function_depth -= 1
+        if self._function_depth == 0:
+            self._current_function = None
+    
+    def visit_Call(self, node: cst.Call) -> None:
+        """Track function/method calls to build call graph."""
+        if not self._current_function:
+            return
+        
+        # Try to resolve the callable name
+        callee_name = self._resolve_call_name(node.func)
+        if not callee_name:
+            return
+        
+        # Add outgoing call from current function
+        if self._current_function in self.call_graph:
+            if callee_name not in self.call_graph[self._current_function].outgoing:
+                self.call_graph[self._current_function].outgoing.append(callee_name)
+        
+        # Add incoming call to callee (initialize if needed)
+        if callee_name not in self.call_graph:
+            self.call_graph[callee_name] = CallGraphInfo(name=callee_name)
+        if self._current_function not in self.call_graph[callee_name].incoming:
+            self.call_graph[callee_name].incoming.append(self._current_function)
+    
+    def _resolve_call_name(self, func: cst.BaseExpression) -> str | None:
+        """Resolve the name of a called function/method."""
+        if isinstance(func, cst.Name):
+            # Direct call: func()
+            return func.value
+        elif isinstance(func, cst.Attribute):
+            # Method call: obj.method() or self.method()
+            if isinstance(func.value, cst.Name):
+                if func.value.value == "self" and self._current_class:
+                    # self.method() -> resolve to ClassName.method
+                    return f"{self._current_class}.{func.attr.value}"
+                # Otherwise just return method name
+                return func.attr.value
+            # For chained calls like obj.a.b(), just return the final method name
+            return func.attr.value
+        return None
     
     def _get_dotted_name(self, node: cst.BaseExpression) -> str:
         """Get a dotted name like 'a.b.c' from a node."""
@@ -279,7 +343,8 @@ def get_complete_module_info(source_code: str) -> ModuleInfo:
         classes=visitor.classes,
         methods_by_class=visitor.methods_by_class,
         class_variables=visitor.class_variables,
-        module_constants=visitor.module_constants
+        module_constants=visitor.module_constants,
+        call_graph=visitor.call_graph
     )
 
 

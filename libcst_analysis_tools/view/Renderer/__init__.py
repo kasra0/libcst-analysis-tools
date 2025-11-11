@@ -1,6 +1,7 @@
 """Tree renderers for different data types."""
 
-from .TreeRenderer import ClassMethodsTreeRenderer
 from .CompleteModuleTreeRenderer import CompleteModuleTreeRenderer
+from .CallGraphTreeRenderer      import CallGraphTreeRenderer
+from .FileSystemTreeRenderer    import FileSystemTreeRenderer
 
-__all__ = ["ClassMethodsTreeRenderer", "CompleteModuleTreeRenderer"]
+__all__ = ["CompleteModuleTreeRenderer", "CallGraphTreeRenderer", "FileSystemTreeRenderer"]

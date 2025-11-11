@@ -13,7 +13,7 @@ class CompleteModuleTreeRenderer(TreeRenderer[ModuleInfo]):
     
     # Emojis for different elements
     IMPORT_EMOJI   = "📦"
-    FUNCTION_EMOJI = "⚙️"
+    FUNCTION_EMOJI = "⚙️ "
     CLASS_EMOJI    = "🧱"
     METHOD_EMOJI   = "🔧"
     VARIABLE_EMOJI = "📊"
@@ -57,7 +57,7 @@ class CompleteModuleTreeRenderer(TreeRenderer[ModuleInfo]):
         
         # Add module functions
         if module_data.functions:
-            functions_node = tree.root.add(f"⚙️ Functions ({len(module_data.functions)})", expand=True)
+            functions_node = tree.root.add(f"⚙️  Functions ({len(module_data.functions)})", expand=True)
             for func in module_data.functions:
                 params = ", ".join(func.parameters)
                 async_marker = "async " if func.is_async else ""

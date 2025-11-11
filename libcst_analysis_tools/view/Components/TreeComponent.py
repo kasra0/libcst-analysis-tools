@@ -46,17 +46,17 @@ class TreeComponent(Widget, Generic[T]):
         if event.input.id != self.tree_filter_input_id:
             return
         
-        Logger._log_Input_event(self, event)
+        Logger._log(self, event)
         self.filter_tree(event.value)
 
     def on_tree_node_collapsed(self, event: Tree.NodeCollapsed) -> None:
-        Logger._log_tree_event(self,event)
+        Logger._log(self,event)
 
     def on_tree_node_expanded(self, event: Tree.NodeExpanded) -> None:
-        Logger._log_tree_event(self,event)
+        Logger._log(self,event)
 
     def on_tree_node_highlighted(self, event: Tree.NodeHighlighted) -> None:
-        Logger._log_tree_event(self,event)
-
+        Logger._log(self,event)
+        
     def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
-        Logger._log_tree_event(self,event)
+        Logger._log(self,event)

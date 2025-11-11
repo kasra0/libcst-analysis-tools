@@ -12,6 +12,7 @@ from .analyze_complete import (
     ImportInfo,
     VariableInfo,
     ModuleInfo,
+    CallGraphInfo,
     get_complete_module_info,
     get_complete_module_info_from_file
 )
@@ -34,6 +35,7 @@ __all__ = [
     "ImportInfo",
     "VariableInfo",
     "ModuleInfo",
+    "CallGraphInfo",
     
     # Complete module analysis
     "get_complete_module_info",

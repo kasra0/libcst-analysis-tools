@@ -1,5 +1,5 @@
 from libcst_analysis_tools.analyze_complete import get_all_classes_with_methods_from_file
-from libcst_analysis_tools.view.Renderer.TreeRenderer import  FileNode
+from libcst_analysis_tools.view.Renderer.FileSystemTreeRenderer import  FileNode
 from typing import List
 import inspect 
 from textual.app import App

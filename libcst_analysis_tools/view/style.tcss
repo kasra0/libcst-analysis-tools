@@ -8,20 +8,27 @@ DirectoryTreeComponent {
     min-width: 30;
     height: 100%;
 }
-
+#main-content{
+    height:70%
+}
 #filesystem-tree {
     width: 30%;
     min-width: 30;
 }
 
 #content-tree {
-    width: 30%;
+    width: 20%;
+    min-width: 30;
+}
+
+#callgraph-tree{
+    width: 20%;
     min-width: 30;
 }
 
 TableComponent {
-    height: 70%;
-    width: 100%;        
+    height: 100%;
+    width: 1fr;        
     padding:0;
 }
 
