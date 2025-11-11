@@ -28,6 +28,7 @@ keywords = ["libcst", "ast", "code-analysis", "python", "static-analysis"]
 requires-python = ">=3.8"
 dependencies = [
     "libcst>=1.0.0",
+    "textual>=0.47.0",
 ]
 
 [project.optional-dependencies]
@@ -49,12 +50,19 @@ Issues = "https://github.com/kasra0/libcst-analysis-tools/issues"
 list-classes = "libcst_analysis_tools.list_classes:main"
 list-functions = "libcst_analysis_tools.list_functions:main"
 list-methods = "libcst_analysis_tools.list_methods:main"
+libcst-analyze = "libcst_analysis_tools.view.App:main"
 
 [tool.setuptools]
-packages = ["libcst_analysis_tools"]
+packages = [
+    "libcst_analysis_tools",
+    "libcst_analysis_tools.view",
+    "libcst_analysis_tools.view.Components",
+    "libcst_analysis_tools.view.Renderer",
+    "libcst_analysis_tools.store",
+]
 
 [tool.setuptools.package-data]
-libcst_analysis_tools = ["*.py"]
+libcst_analysis_tools = ["*.py", "view/*.tcss"]
 
 [tool.black]
 line-length = 100

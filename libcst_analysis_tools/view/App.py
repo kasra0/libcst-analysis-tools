@@ -248,10 +248,20 @@ class PackageAnalysisApp(App):
     def action_toggle_dark(self)-> None:
         """An Action to toggle dark mode."""
         self.theme = ("textual-dark" if self.theme == "textual-light" else "textual-light")
+
+
+def main():
+    """CLI entry point for the package analysis TUI."""
+    import sys
+    
+    # Check if package name provided as argument
+    package_name = None
+    if len(sys.argv) > 1:
+        package_name = sys.argv[1]
+    
+    app = PackageAnalysisApp(package_name=package_name)
+    app.run()
     
 
 if __name__ == "__main__":
-    # Example: Start with a specific package
-    app = PackageAnalysisApp(package_name="textual")
-    # Or start empty: app = PackageAnalysisApp()
-    app.run()
+    main()
