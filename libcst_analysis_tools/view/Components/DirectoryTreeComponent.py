@@ -83,6 +83,13 @@ class DirectoryTreeComponent(Widget):
         if file_path.endswith('.py'):
             self.post_message(self.PythonFileSelected(file_path))
     
+    def reload_path(self, new_path: str) -> None:
+        """Reload the directory tree with a new path."""
+        self.path = new_path
+        tree = self.query_one(f"#{self.tree_id}", FilteredDirectoryTree)
+        tree.path = new_path
+        tree.reload()
+    
     def on_input_changed(self, event: Input.Changed) -> None:
         """Filter directory tree when input changes."""
         # Check if the input belongs to this component

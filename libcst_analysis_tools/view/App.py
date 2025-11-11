@@ -1,10 +1,10 @@
 
 from textual.app         import App, ComposeResult
-
+from textual.reactive    import reactive
 from textual.containers  import Container,Vertical,Horizontal
-from textual.widgets     import Header,Footer,Tree
+from textual.widgets     import Header,Footer,Tree,Input
 import re
-
+from textual.widgets     import RichLog
 from libcst_analysis_tools.view.Components.TreeComponent            import TreeComponent
 from libcst_analysis_tools.view.Components.DirectoryTreeComponent   import DirectoryTreeComponent
 from libcst_analysis_tools.view.Renderer.CompleteModuleTreeRenderer import CompleteModuleTreeRenderer
@@ -12,7 +12,7 @@ from libcst_analysis_tools.view.Renderer.CallGraphTreeRenderer      import CallG
 from libcst_analysis_tools.view.Components.TableComponent           import TableComponent
 from libcst_analysis_tools.view.Components.LogComponent             import LogComponent
 from libcst_analysis_tools.analyze_complete                         import get_complete_module_info_from_file, ModuleInfo, CallGraphInfo
-
+from libcst_analysis_tools.view.logger import Logger
 import  libcst_analysis_tools.store.store as store 
 
 
@@ -21,6 +21,9 @@ class PackageAnalysisApp(App):
     
     CSS_PATH = "style.tcss"
     BINDINGS = [("D","toggle_dark","Toggle dark mode")]
+    
+    # Reactive property for package browsing
+    package_to_browse = reactive("textual")
 
     def compose(self)-> ComposeResult:
         """Create child widgets for the app."""
@@ -28,10 +31,9 @@ class PackageAnalysisApp(App):
         with Container():
             with Vertical(id="main-panel"):
                 with Horizontal(id="main-content"):
-                    # Left: Directory tree - browsing Textual package
-                    package_to_browse = "libcst_analysis_tools"  # Change this to browse other packages
+                    # Left: Directory tree - browsing package (will be reactive)
                     yield DirectoryTreeComponent(
-                        path=store.get_package_path(package_to_browse),
+                        path=store.get_package_path(self.package_to_browse),
                         component_id="filesystem-tree"
                     )
                     # Right content trees
@@ -48,10 +50,39 @@ class PackageAnalysisApp(App):
                         title="Call Graph",
                         component_id="callgraph-tree"
                     )
-                    yield TableComponent(store.tabular_data(100))
+                    with Vertical(id="right-panel"):
+                        yield Input(placeholder="package...", id="package-name-input", value=self.package_to_browse)
+                        yield TableComponent(store.tabular_data(100))
                 
                 yield LogComponent()
         yield Footer()
+    
+    def watch_package_to_browse(self, new_package: str) -> None:
+        """React to package_to_browse changes - update DirectoryTree and clear content trees."""
+        try:
+            # Get new package path
+            new_path = store.get_package_path(new_package)
+            
+            # Update DirectoryTreeComponent with new path
+            filesystem_tree = self.query_one("#filesystem-tree", DirectoryTreeComponent)
+            filesystem_tree.reload_path(new_path)
+            
+            # Clear content tree
+            content_tree = self.query_one("#content-tree", TreeComponent)
+            content_tree.reload_data(ModuleInfo(), title="Module Content")
+            
+            # Clear call graph tree
+            callgraph_tree = self.query_one("#callgraph-tree", TreeComponent)
+            callgraph_tree.reload_data(CallGraphInfo(name="No selection"), title="Call Graph")
+            
+            # Clear current module info
+            self.current_module_info = None
+            
+        except Exception as e:
+            # Log error
+            x=10
+            #log = self.query_one("#event-log", RichLog)
+            #log.write(f"Error loading package '{new_package}': {str(e)}")
     
     def on_directory_tree_component_python_file_selected(self, event: DirectoryTreeComponent.PythonFileSelected) -> None:
         """Handle Python file selection from DirectoryTreeComponent."""
@@ -97,8 +128,6 @@ class PackageAnalysisApp(App):
             callgraph_tree = self.query_one("#callgraph-tree", TreeComponent)
             callgraph_tree.reload_data(call_info, title=f"➡️ {callable_name}")
         
-
-    
     def _extract_callable_name(self, label: str) -> str | None:
         """Extract callable name from tree node label."""
         # The label format from CompleteModuleTreeRenderer is like:
@@ -138,10 +167,37 @@ class PackageAnalysisApp(App):
         
         return None
 
-    
+    def on_input_changed(self, event: Input.Changed) -> None:
+        """Handle input changes in the package name input."""
+        # Only handle input changes from the package name input
+        if event.input.id != "package-name-input":
+            return
+        
+        package_name = event.value.strip()
+        if not package_name:
+            return
+        #self.query_one("#event-log", RichLog).write(f"Package name input changed to: {package_name}")
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Handle input submission in the package name input."""
+        # Only handle input submissions from the package name input
+        if event.input.id != "package-name-input":
+            return
+        
+        new_package = event.value.strip()
+        if new_package:
+            # Update reactive property - this will trigger watch_package_to_browse
+            self.package_to_browse = new_package
+            
+            # Log
+            log = self.query_one("#event-log", RichLog)
+            log.write(f"Switching to package: {new_package}")
+
+
     def action_toggle_dark(self)-> None:
         """An Action to toggle dark mode."""
         self.theme = ("textual-dark" if self.theme == "textual-light" else "textual-light")
+    
 
 if __name__ == "__main__":
     app = PackageAnalysisApp()
