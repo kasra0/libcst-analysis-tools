@@ -3,6 +3,7 @@ from textual.app         import ComposeResult
 from textual.widget      import Widget 
 from textual.widgets     import Tree
 from textual.widgets     import Input
+from textual.containers import HorizontalScroll
 from libcst_analysis_tools.view.logger   import Logger
 from libcst_analysis_tools.view.Renderer.TreeRenderer import TreeRenderer
 
@@ -20,9 +21,11 @@ class TreeComponent(Widget, Generic[T]):
     
     def compose(self) -> ComposeResult:
         yield Input(placeholder="Filter methods...", id=self.tree_filter_input_id)
-        tree = Tree(self.title, id=self.tree_view_id)
-        self.renderer.fill_tree(tree, self.data)
-        yield tree
+        with HorizontalScroll(id="tree-scroll"):
+            tree = Tree(self.title, id=self.tree_view_id)
+            tree.auto_expand = False  # Don't auto-expand but allow full width labels
+            self.renderer.fill_tree(tree, self.data)
+            yield tree
     
     def get_filtered_data(self, filter_text: str) -> Union[List[T], T]:
         return self.renderer.filter_data(self.data, filter_text.strip().lower())
@@ -57,6 +60,6 @@ class TreeComponent(Widget, Generic[T]):
 
     def on_tree_node_highlighted(self, event: Tree.NodeHighlighted) -> None:
         Logger._log(self,event)
-        
+
     def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
         Logger._log(self,event)

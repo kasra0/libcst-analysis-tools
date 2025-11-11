@@ -17,6 +17,9 @@ from .analyze_complete import (
     get_complete_module_info_from_file
 )
 
+# TUI Application
+from .view.App import PackageAnalysisApp
+
 # Modern API (recommended)
 from .list_classes   import list_classes_from_source_code,   list_classes_from_file,   list_classes_from_module
 from .list_functions import list_functions_from_source_code, list_functions_from_file, list_functions_from_module
@@ -55,5 +58,8 @@ __all__ = [
     # Backward compatibility
     "list_classes",
     "list_functions",
+    
+    # TUI Application
+    "PackageAnalysisApp",
     "list_methods",
 ]

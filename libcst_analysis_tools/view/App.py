@@ -1,8 +1,8 @@
 
 from textual.app         import App, ComposeResult
 from textual.reactive    import reactive
-from textual.containers  import Container,Vertical,Horizontal
-from textual.widgets     import Header,Footer,Tree,Input
+from textual.containers  import Container,Vertical,Horizontal,HorizontalScroll
+from textual.widgets     import Header,Footer,Tree,Input,Collapsible
 import re
 from textual.widgets     import RichLog
 from libcst_analysis_tools.view.Components.TreeComponent            import TreeComponent
@@ -17,13 +17,23 @@ import  libcst_analysis_tools.store.store as store
 
 
 class PackageAnalysisApp(App):
-    """A Textual app to manage stopwatches."""
+    """A Textual app for analyzing Python packages with call graph visualization.
+    
+    Args:
+        package_name: Optional initial package to browse. If None, starts empty.
+    """
     
     CSS_PATH = "style.tcss"
     BINDINGS = [("D","toggle_dark","Toggle dark mode")]
     
     # Reactive property for package browsing
-    package_to_browse = reactive("textual")
+    package_to_browse = reactive("")
+    
+    def __init__(self, package_name: str | None = None, **kwargs):
+        """Initialize the app with an optional package to browse."""
+        super().__init__(**kwargs)
+        # Store initial package to set after mount
+        self._initial_package = package_name
 
     def compose(self)-> ComposeResult:
         """Create child widgets for the app."""
@@ -32,8 +42,15 @@ class PackageAnalysisApp(App):
             with Vertical(id="main-panel"):
                 with Horizontal(id="main-content"):
                     # Left: Directory tree - browsing package (will be reactive)
+                    # Check both reactive property and initial package
+                    initial_path = "."
+                    if self.package_to_browse:
+                        initial_path = store.get_package_path(self.package_to_browse)
+                    elif hasattr(self, '_initial_package') and self._initial_package:
+                        initial_path = store.get_package_path(self._initial_package)
+                    
                     yield DirectoryTreeComponent(
-                        path=store.get_package_path(self.package_to_browse),
+                        path=initial_path,
                         component_id="filesystem-tree"
                     )
                     # Right content trees
@@ -51,14 +68,35 @@ class PackageAnalysisApp(App):
                         component_id="callgraph-tree"
                     )
                     with Vertical(id="right-panel"):
-                        yield Input(placeholder="package...", id="package-name-input", value=self.package_to_browse)
-                        yield TableComponent(store.tabular_data(100))
+                        # Show initial package value if provided
+                        initial_value = ""
+                        if self.package_to_browse:
+                            initial_value = self.package_to_browse
+                        elif hasattr(self, '_initial_package') and self._initial_package:
+                            initial_value = self._initial_package
+                            
+                        yield Input(
+                            placeholder="Enter package name...", 
+                            id="package-name-input", 
+                            value=initial_value
+                        )
+                        with HorizontalScroll(id="table-scroll"):
+                            yield TableComponent(store.tabular_data(100))
                 
                 yield LogComponent()
         yield Footer()
     
+    def on_mount(self) -> None:
+        """Called when app is mounted. Set initial package if provided."""
+        if hasattr(self, '_initial_package') and self._initial_package:
+            self.package_to_browse = self._initial_package
+    
     def watch_package_to_browse(self, new_package: str) -> None:
         """React to package_to_browse changes - update DirectoryTree and clear content trees."""
+        # Skip if empty or during initialization
+        if not new_package or not self.is_mounted:
+            return
+            
         try:
             # Get new package path
             new_path = store.get_package_path(new_package)
@@ -78,11 +116,16 @@ class PackageAnalysisApp(App):
             # Clear current module info
             self.current_module_info = None
             
+            # Update input field
+            input_field = self.query_one("#package-name-input", Input)
+            if input_field.value != new_package:
+                input_field.value = new_package
+            
         except Exception as e:
             # Log error
-            x=10
-            #log = self.query_one("#event-log", RichLog)
-            #log.write(f"Error loading package '{new_package}': {str(e)}")
+            if self.is_mounted:
+                log = self.query_one("#event-log", RichLog)
+                log.write(f"Error loading package '{new_package}': {str(e)}")
     
     def on_directory_tree_component_python_file_selected(self, event: DirectoryTreeComponent.PythonFileSelected) -> None:
         """Handle Python file selection from DirectoryTreeComponent."""
@@ -200,5 +243,7 @@ class PackageAnalysisApp(App):
     
 
 if __name__ == "__main__":
-    app = PackageAnalysisApp()
+    # Example: Start with a specific package
+    app = PackageAnalysisApp(package_name="textual")
+    # Or start empty: app = PackageAnalysisApp()
     app.run()
