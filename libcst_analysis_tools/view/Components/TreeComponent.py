@@ -1,4 +1,4 @@
-from typing import List, Generic, TypeVar, Union
+from typing import List, Generic, TypeVar, Union, Optional
 from textual.app         import ComposeResult
 from textual.widget      import Widget 
 from textual.widgets     import Tree
@@ -32,10 +32,12 @@ class TreeComponent(Widget, Generic[T]):
         tree = self.query_one(f"#{self.tree_view_id}", Tree)
         self.renderer.fill_tree(tree, filtered_data)
     
-    def reload_data(self, new_data: Union[List[T], T]) -> None:
-        """Reload tree with new data."""
+    def reload_data(self, new_data: Union[List[T], T], title: Optional[str] = None) -> None:
+        """Reload tree with new data and optionally update title."""
         self.data = new_data
         tree = self.query_one(f"#{self.tree_view_id}", Tree)
+        if title:
+            tree.root.label = title
         self.renderer.fill_tree(tree, new_data)
 
     def on_input_changed(self, event: Input.Changed) -> None:

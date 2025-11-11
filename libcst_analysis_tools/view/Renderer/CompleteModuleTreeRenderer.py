@@ -3,24 +3,19 @@
 from typing import List, Union
 from textual.widgets import Tree
 from libcst_analysis_tools.analyze_complete import (
-    ModuleInfo,
-    ImportInfo,
-    FunctionInfo,
-    VariableInfo,
-    get_complete_module_info_from_file
+    ModuleInfo
 )
-from libcst_analysis_tools.list_classes import ClassInfo
-from libcst_analysis_tools.list_methods import MethodInfo
+from libcst_analysis_tools.view.Renderer.TreeRenderer import TreeRenderer
 
 
-class CompleteModuleTreeRenderer:
+class CompleteModuleTreeRenderer(TreeRenderer[ModuleInfo]):
     """Renderer for complete module information with icons."""
     
     # Emojis for different elements
-    IMPORT_EMOJI = "📦"
+    IMPORT_EMOJI   = "📦"
     FUNCTION_EMOJI = "⚙️"
-    CLASS_EMOJI = "🧱"
-    METHOD_EMOJI = "🔧"
+    CLASS_EMOJI    = "🧱"
+    METHOD_EMOJI   = "🔧"
     VARIABLE_EMOJI = "📊"
     CONSTANT_EMOJI = "🔢"
     

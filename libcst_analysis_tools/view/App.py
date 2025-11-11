@@ -1,17 +1,14 @@
 
 from textual.app         import App, ComposeResult
 from textual.containers  import Container,Vertical,Horizontal
-from textual.widgets     import Header,Footer, Tree, DirectoryTree
-from textual.message     import Message
-import textual
+from textual.widgets     import Header,Footer,Tree
 
 from libcst_analysis_tools.view.Components.TreeComponent  import TreeComponent
 from libcst_analysis_tools.view.Components.DirectoryTreeComponent import DirectoryTreeComponent
-from libcst_analysis_tools.view.Renderer.TreeRenderer  import ClassMethodsTreeRenderer
 from libcst_analysis_tools.view.Renderer.CompleteModuleTreeRenderer import CompleteModuleTreeRenderer
 from libcst_analysis_tools.view.Components.TableComponent import TableComponent
 from libcst_analysis_tools.view.Components.LogComponent   import LogComponent
-from libcst_analysis_tools.analyze_complete import get_complete_module_info_from_file
+from libcst_analysis_tools.analyze_complete import get_complete_module_info_from_file, ModuleInfo
 
 import  libcst_analysis_tools.store.store as store 
 
@@ -34,10 +31,10 @@ class RootApp(App):
                     component_id="filesystem-tree"
                 )
                 # Right content trees
-                yield TreeComponent(
-                    data=store.tree_data(), 
-                    renderer=ClassMethodsTreeRenderer(),
-                    title=store.tree_title(),
+                yield TreeComponent[ModuleInfo](
+                    data=ModuleInfo(), 
+                    renderer=CompleteModuleTreeRenderer(),
+                    title="Module Content",
                     component_id="content-tree"
                 )
                 with Vertical(id="right-panel"):
@@ -51,14 +48,13 @@ class RootApp(App):
             # Use complete module analysis
             module_info = get_complete_module_info_from_file(event.file_path)
             
-            # Update the content tree with new renderer
+            # Get file name for title
+            import os
+            file_name = os.path.basename(event.file_path)
+            
+            # Update the content tree with new data and title
             content_tree = self.query_one("#content-tree", TreeComponent)
-            
-            # Switch to CompleteModuleTreeRenderer if not already using it
-            if not isinstance(content_tree.renderer, CompleteModuleTreeRenderer):
-                content_tree.renderer = CompleteModuleTreeRenderer()
-            
-            content_tree.reload_data(module_info)
+            content_tree.reload_data(module_info, title=f"📄 {file_name}")
         except Exception as e:
             # Log error if needed
             pass
@@ -67,8 +63,6 @@ class RootApp(App):
     def action_toggle_dark(self)-> None:
         """An Action to toggle dark mode."""
         self.theme = ("textual-dark" if self.theme == "textual-light" else "textual-light")
-
-
 
 if __name__ == "__main__":
     app = RootApp()

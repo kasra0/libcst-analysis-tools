@@ -1,7 +1,7 @@
 """Analyze complete module structure in a single pass."""
 
 from typing import Dict, List, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import libcst as cst
 from libcst.metadata import PositionProvider, MetadataWrapper
 from .list_classes import ClassInfo
@@ -39,12 +39,12 @@ class VariableInfo:
 @dataclass
 class ModuleInfo:
     """Complete information about a module."""
-    imports: List[ImportInfo]
-    functions: List[FunctionInfo]
-    classes: List[ClassInfo]
-    methods_by_class: Dict[str, List[MethodInfo]]
-    class_variables: Dict[str, List[VariableInfo]]  # class_name -> variables
-    module_constants: List[VariableInfo]
+    imports: List[ImportInfo] = field(default_factory=list)
+    functions: List[FunctionInfo] = field(default_factory=list)
+    classes: List[ClassInfo] = field(default_factory=list)
+    methods_by_class: Dict[str, List[MethodInfo]] = field(default_factory=dict)
+    class_variables: Dict[str, List[VariableInfo]] = field(default_factory=dict)  # class_name -> variables
+    module_constants: List[VariableInfo] = field(default_factory=list)
 
 class CompleteModuleAnalyzer(cst.CSTVisitor):
     """Collect all classes, methods, functions, variables, and imports in a single traversal."""
