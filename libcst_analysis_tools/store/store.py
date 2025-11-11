@@ -4,7 +4,28 @@ from typing import List
 import inspect 
 from textual.app import App
 import os
+import sys
 from pathlib import Path
+
+
+def get_python_environment_info() -> dict:
+    """
+    Get information about the current Python environment.
+    
+    Returns:
+        Dictionary with environment details:
+        - python_executable: Path to Python interpreter
+        - python_version: Python version string
+        - virtual_env: Virtual environment path (if any)
+        - site_packages: List of site-packages directories
+    """
+    info = {
+        "python_executable": sys.executable,
+        "python_version": sys.version,
+        "virtual_env": os.environ.get('VIRTUAL_ENV') or os.environ.get('CONDA_DEFAULT_ENV'),
+        "site_packages": [p for p in sys.path if 'site-packages' in p]
+    }
+    return info
 
 
 def get_package_path(package_name: str) -> str:

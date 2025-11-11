@@ -64,11 +64,12 @@ class DirectoryTreeComponent(Widget):
             super().__init__()
             self.file_path = file_path
     
-    def __init__(self, path: str, component_id: str = "directory-tree"):
+    def __init__(self, path: str, component_id: str = "directory-tree", border_title: str = "Directory Tree"):
         super().__init__(id=component_id)
         self.path = path
         self.filter_input_id = f"{component_id}-filter-input"
         self.tree_id = f"{component_id}-tree"
+        self.border_title = border_title
     
     def compose(self) -> ComposeResult:
         """Create child widgets."""

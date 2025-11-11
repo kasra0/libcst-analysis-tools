@@ -48,26 +48,10 @@ class PackageAnalysisApp(App):
                         initial_path = store.get_package_path(self.package_to_browse)
                     elif hasattr(self, '_initial_package') and self._initial_package:
                         initial_path = store.get_package_path(self._initial_package)
-                    
-                    yield DirectoryTreeComponent(
-                        path=initial_path,
-                        component_id="filesystem-tree"
-                    )
-                    # Right content trees
-                    yield TreeComponent[ModuleInfo](
-                        data=ModuleInfo(), 
-                        renderer=CompleteModuleTreeRenderer(),
-                        title="Module Content",
-                        component_id="content-tree"
-                    )
-                    # Call graph tree
-                    yield TreeComponent[CallGraphInfo](
-                        data=CallGraphInfo(name="No selection"),
-                        renderer=CallGraphTreeRenderer(),
-                        title="Call Graph",
-                        component_id="callgraph-tree"
-                    )
-                    with Vertical(id="right-panel"):
+
+                    vertical=Vertical(id="right-panel")
+                    vertical.border_title="Package Info & Data Preview"
+                    with vertical:
                         # Show initial package value if provided
                         initial_value = ""
                         if self.package_to_browse:
@@ -81,7 +65,29 @@ class PackageAnalysisApp(App):
                             value=initial_value
                         )
                         with HorizontalScroll(id="table-scroll"):
-                            yield TableComponent(store.tabular_data(100))
+                            yield TableComponent(store.tabular_data(1000))
+                    
+                    yield DirectoryTreeComponent(
+                        path=initial_path,
+                        component_id="filesystem-tree"
+                    )
+                    # Right content trees
+                    yield TreeComponent[ModuleInfo](
+                        data=ModuleInfo(), 
+                        renderer=CompleteModuleTreeRenderer(),
+                        title="Module Content",
+                        component_id="content-tree",
+                        border_title="Module Content"
+                    )
+                    # Call graph tree
+                    yield TreeComponent[CallGraphInfo](
+                        data=CallGraphInfo(name="No selection"),
+                        renderer=CallGraphTreeRenderer(),
+                        title="Call Graph",
+                        component_id="callgraph-tree",
+                        border_title="Call Graph"
+                    )
+
                 
                 yield LogComponent()
         yield Footer()
@@ -100,6 +106,8 @@ class PackageAnalysisApp(App):
         try:
             # Get new package path
             new_path = store.get_package_path(new_package)
+            log = self.query_one("#event-log", RichLog)
+            log.write(f"Loading package '{new_package}' from path: {new_path}")
             
             # Update DirectoryTreeComponent with new path
             filesystem_tree = self.query_one("#filesystem-tree", DirectoryTreeComponent)

@@ -11,13 +11,14 @@ T = TypeVar('T')
 
 
 class TreeComponent(Widget, Generic[T]):
-    def __init__(self, data: Union[List[T], T], renderer: TreeRenderer[T], title: str = "Root", component_id: str = "tree-component"):
+    def __init__(self, data: Union[List[T], T], renderer: TreeRenderer[T], title: str = "Root", component_id: str = "tree-component",border_title: str = "Tree Component"):
         super().__init__(id=component_id)
         self.data = data
         self.renderer = renderer
         self.title = title
         self.tree_view_id = f"{component_id}-tree-view"
         self.tree_filter_input_id = f"{component_id}-filter-input"
+        self.border_title = border_title
     
     def compose(self) -> ComposeResult:
         yield Input(placeholder="Filter methods...", id=self.tree_filter_input_id)
