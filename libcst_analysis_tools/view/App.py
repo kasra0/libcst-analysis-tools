@@ -2,7 +2,7 @@
 from textual.app         import App, ComposeResult
 from textual.reactive    import reactive
 from textual.containers  import Container,Vertical,Horizontal,HorizontalScroll
-from textual.widgets     import Header,Footer,Tree,Input,Collapsible
+from textual.widgets     import Header,Footer,Tree,Input,Collapsible,DataTable
 import re
 from textual.widgets     import RichLog
 from libcst_analysis_tools.view.Components.TreeComponent            import TreeComponent
@@ -10,6 +10,7 @@ from libcst_analysis_tools.view.Components.DirectoryTreeComponent   import Direc
 from libcst_analysis_tools.view.Renderer.CompleteModuleTreeRenderer import CompleteModuleTreeRenderer
 from libcst_analysis_tools.view.Renderer.CallGraphTreeRenderer      import CallGraphTreeRenderer
 from libcst_analysis_tools.view.Components.TableComponent           import TableComponent
+from libcst_analysis_tools.view.Components.EnvironmentsTableComponent import EnvironmentsTableComponent
 from libcst_analysis_tools.view.Components.LogComponent             import LogComponent
 from libcst_analysis_tools.analyze_complete                         import get_complete_module_info_from_file, ModuleInfo, CallGraphInfo
 from libcst_analysis_tools.view.logger import Logger
@@ -28,6 +29,10 @@ class PackageAnalysisApp(App):
     
     # Reactive property for package browsing
     package_to_browse = reactive("")
+    # Track current environment context
+    current_env_name = ""
+    current_env_type = ""
+    current_env_location = ""
     
     def __init__(self, package_name: str | None = None, **kwargs):
         """Initialize the app with an optional package to browse."""
@@ -39,20 +44,26 @@ class PackageAnalysisApp(App):
         """Create child widgets for the app."""
         yield Header()
         with Container():
-            with Vertical(id="main-panel"):
-                with Horizontal(id="main-content"):
-                    # Left: Directory tree - browsing package (will be reactive)
-                    # Check both reactive property and initial package
-                    initial_path = "."
-                    if self.package_to_browse:
-                        initial_path = store.get_package_path(self.package_to_browse)
-                    elif hasattr(self, '_initial_package') and self._initial_package:
-                        initial_path = store.get_package_path(self._initial_package)
-
-                    vertical=Vertical(id="right-panel")
-                    vertical.border_title="Package Info & Data Preview"
-                    with vertical:
-                        # Show initial package value if provided
+            # Main horizontal layout: Left (envs + packages) | Right (trees + log)
+            with Horizontal(id="main-layout"):
+                # LEFT PANEL: Environments (top 1/3) + Packages (bottom 2/3)
+                with Vertical(id="left-panel"):
+                    # Environments section (1/3)
+                    with Vertical(id="environments-section"):
+                        yield EnvironmentsTableComponent()
+                    
+                    # Packages section (2/3)
+                    with Vertical(id="packages-section"):
+                        # Filter input for the table
+                        yield Input(
+                            placeholder="Filter packages...", 
+                            id="package-filter-input"
+                        )
+                        
+                        with HorizontalScroll(id="table-scroll"):
+                            yield TableComponent()  # Auto-loads installed packages
+                        
+                        # Show selected package (read-only display)
                         initial_value = ""
                         if self.package_to_browse:
                             initial_value = self.package_to_browse
@@ -60,36 +71,45 @@ class PackageAnalysisApp(App):
                             initial_value = self._initial_package
                             
                         yield Input(
-                            placeholder="Enter package name...", 
+                            placeholder="Selected package: (none)", 
                             id="package-name-input", 
                             value=initial_value
                         )
-                        with HorizontalScroll(id="table-scroll"):
-                            yield TableComponent(store.tabular_data(1000))
-                    
-                    yield DirectoryTreeComponent(
-                        path=initial_path,
-                        component_id="filesystem-tree"
-                    )
-                    # Right content trees
-                    yield TreeComponent[ModuleInfo](
-                        data=ModuleInfo(), 
-                        renderer=CompleteModuleTreeRenderer(),
-                        title="Module Content",
-                        component_id="content-tree",
-                        border_title="Module Content"
-                    )
-                    # Call graph tree
-                    yield TreeComponent[CallGraphInfo](
-                        data=CallGraphInfo(name="No selection"),
-                        renderer=CallGraphTreeRenderer(),
-                        title="Call Graph",
-                        component_id="callgraph-tree",
-                        border_title="Call Graph"
-                    )
-
                 
-                yield LogComponent()
+                # RIGHT PANEL: Trees (top 70%) + Log (bottom 30%)
+                with Vertical(id="right-panel"):
+                    # Trees section (horizontal: 3 trees side by side)
+                    with Horizontal(id="trees-panel"):
+                        # Check both reactive property and initial package
+                        initial_path = "."
+                        if self.package_to_browse:
+                            initial_path = store.get_package_path(self.package_to_browse)
+                        elif hasattr(self, '_initial_package') and self._initial_package:
+                            initial_path = store.get_package_path(self._initial_package)
+                        
+                        yield DirectoryTreeComponent(
+                            path=initial_path,
+                            component_id="filesystem-tree"
+                        )
+                        
+                        yield TreeComponent[ModuleInfo](
+                            data=ModuleInfo(), 
+                            renderer=CompleteModuleTreeRenderer(),
+                            title="Module Content",
+                            component_id="content-tree",
+                            border_title="Module Content"
+                        )
+                        
+                        yield TreeComponent[CallGraphInfo](
+                            data=CallGraphInfo(name="No selection"),
+                            renderer=CallGraphTreeRenderer(),
+                            title="Call Graph",
+                            component_id="callgraph-tree",
+                            border_title="Call Graph"
+                        )
+                    
+                    # Log section
+                    yield LogComponent()
         yield Footer()
     
     def on_mount(self) -> None:
@@ -104,10 +124,22 @@ class PackageAnalysisApp(App):
             return
             
         try:
-            # Get new package path
-            new_path = store.get_package_path(new_package)
+            # Get new package path with environment context
             log = self.query_one("#event-log", RichLog)
-            log.write(f"Loading package '{new_package}' from path: {new_path}")
+            
+            # Log which environment we're searching in
+            env_info = "current environment"
+            if self.current_env_name:
+                env_info = f"environment '{self.current_env_name}' ({self.current_env_type})"
+            log.write(f"🔍 Searching for package '{new_package}' in {env_info}")
+            
+            new_path = store.get_package_path(
+                new_package, 
+                self.current_env_name, 
+                self.current_env_type, 
+                self.current_env_location
+            )
+            log.write(f"✅ Loading package '{new_package}' from path: {new_path}")
             
             # Update DirectoryTreeComponent with new path
             filesystem_tree = self.query_one("#filesystem-tree", DirectoryTreeComponent)
@@ -141,13 +173,25 @@ class PackageAnalysisApp(App):
             # Use complete module analysis
             self.current_module_info = get_complete_module_info_from_file(event.file_path)
             
-            # Get file name for title
+            # Get file name and calculate stats
             import os
             file_name = os.path.basename(event.file_path)
             
+            # Count total lines in file
+            with open(event.file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                total_lines = sum(1 for _ in f)
+            
+            # Count stats from module info
+            num_imports = len(self.current_module_info.imports)
+            num_classes = len(self.current_module_info.classes)
+            num_functions = len(self.current_module_info.functions)
+            
+            # Create title with stats: filename(L(lines),I(imports),C(classes),F(functions))
+            stats_title = f"📄 {file_name} (L({total_lines}), I({num_imports}), C({num_classes}), F({num_functions}))"
+            
             # Update the content tree with new data and title
             content_tree = self.query_one("#content-tree", TreeComponent)
-            content_tree.reload_data(self.current_module_info, title=f"📄 {file_name}")
+            content_tree.reload_data(self.current_module_info, title=stats_title)
         except Exception as e:
             # Log error if needed
             self.current_module_info = None
@@ -219,31 +263,80 @@ class PackageAnalysisApp(App):
         return None
 
     def on_input_changed(self, event: Input.Changed) -> None:
-        """Handle input changes in the package name input."""
-        # Only handle input changes from the package name input
-        if event.input.id != "package-name-input":
-            return
-        
-        package_name = event.value.strip()
-        if not package_name:
-            return
-        #self.query_one("#event-log", RichLog).write(f"Package name input changed to: {package_name}")
+        """Handle input changes for filtering the packages table."""
+        # Only handle the filter input
+        if event.input.id == "package-filter-input":
+            filter_text = event.value.strip()
+            # Filter the packages table in real-time
+            table_component = self.query_one(TableComponent)
+            table_component.filter_packages(filter_text)
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
-        """Handle input submission in the package name input."""
-        # Only handle input submissions from the package name input
-        if event.input.id != "package-name-input":
+        """Handle input submission - Enter key to load package manually."""
+        # Handle manual package entry from the package-name-input
+        if event.input.id == "package-name-input":
+            new_package = event.value.strip()
+            if new_package:
+                # Update reactive property - this will trigger watch_package_to_browse
+                self.package_to_browse = new_package
+                
+                # Log
+                log = self.query_one("#event-log", RichLog)
+                log.write(f"Switching to package: {new_package}")
+
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        """Handle row selection in tables (environments or packages)."""
+        table = event.control
+        row_key = event.row_key
+        
+        # Get the row data
+        row_data = table.get_row(row_key)
+        if not row_data:
             return
         
-        new_package = event.value.strip()
-        if new_package:
-            # Update reactive property - this will trigger watch_package_to_browse
-            self.package_to_browse = new_package
+        # Check which table was clicked by ID
+        if table.id == "environments-table":
+            # Environment selected - load its packages
+            env_name = str(row_data[0])
+            env_type = str(row_data[1])
+            env_location = str(row_data[3])
+            
+            # Store current environment context
+            self.current_env_name = env_name
+            self.current_env_type = env_type
+            self.current_env_location = env_location
             
             # Log
             log = self.query_one("#event-log", RichLog)
-            log.write(f"Switching to package: {new_package}")
-
+            log.write(f"🌍 Selected environment: {env_name} ({env_type}) at {env_location}")
+            
+            # Get packages from this environment
+            packages = store.get_packages_from_environment(env_name, env_type, env_location)
+            
+            # Update TableComponent with new packages (updates internal state)
+            table_component = self.query_one(TableComponent)
+            table_component.update_packages(packages)
+            
+            # Also clear the filter input
+            filter_input = self.query_one("#package-filter-input", Input)
+            filter_input.value = ""
+            
+            log.write(f"Loaded {len(packages)} packages from {env_name}")
+            
+        elif table.id == "packages-table":
+            # Package selected - load package details
+            package_name = str(row_data[0])  # First column is package name
+            
+            # Update reactive property - this will trigger watch_package_to_browse
+            self.package_to_browse = package_name
+            
+            # Update input field to show selected package
+            input_field = self.query_one("#package-name-input", Input)
+            input_field.value = package_name
+            
+            # Log
+            log = self.query_one("#event-log", RichLog)
+            log.write(f"📦 Selected package from table: {package_name}")
 
     def action_toggle_dark(self)-> None:
         """An Action to toggle dark mode."""

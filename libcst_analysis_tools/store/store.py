@@ -1,11 +1,228 @@
 from libcst_analysis_tools.analyze_complete import get_all_classes_with_methods_from_file
 from libcst_analysis_tools.view.Renderer.FileSystemTreeRenderer import  FileNode
-from typing import List
+from typing import List, Tuple, Optional
 import inspect 
 from textual.app import App
 import os
 import sys
 from pathlib import Path
+import importlib.metadata
+import subprocess
+import json
+from datetime import datetime
+
+
+def get_virtual_environments() -> List[Tuple[str, str, int, str]]:
+    """
+    Detect virtual environments (conda and venv).
+    
+    Returns:
+        List of tuples (name, type, package_count, location)
+        
+    Example:
+        >>> get_virtual_environments()
+        [('base', 'conda', 245, '/opt/anaconda3'),
+         ('myenv', 'venv', 12, '/path/to/myenv'), ...]
+    """
+    environments = []
+    
+    # 1. Detect Conda environments
+    try:
+        result = subprocess.run(
+            ['conda', 'env', 'list', '--json'],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        if result.returncode == 0:
+            conda_data = json.loads(result.stdout)
+            for env_path in conda_data.get('envs', []):
+                env_path_obj = Path(env_path)
+                env_name = env_path_obj.name
+                
+                # Count packages in this conda env
+                try:
+                    pkg_result = subprocess.run(
+                        ['conda', 'list', '-n', env_name, '--json'],
+                        capture_output=True,
+                        text=True,
+                        timeout=5
+                    )
+                    if pkg_result.returncode == 0:
+                        packages = json.loads(pkg_result.stdout)
+                        pkg_count = len(packages)
+                    else:
+                        pkg_count = 0
+                except:
+                    pkg_count = 0
+                
+                environments.append((env_name, 'conda', pkg_count, str(env_path)))
+    except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError):
+        # Conda not installed or error
+        pass
+    
+    # 2. Detect venv environments in current directory and common locations
+    search_paths = [
+        Path.cwd(),  # Current directory
+        Path.home() / 'venvs',  # Common venv location
+        Path.cwd().parent,  # Parent directory
+    ]
+    
+    for search_path in search_paths:
+        if not search_path.exists():
+            continue
+            
+        try:
+            # Look for directories with bin/python or Scripts/python.exe
+            for item in search_path.iterdir():
+                if not item.is_dir():
+                    continue
+                
+                # Check for venv markers
+                python_paths = [
+                    item / 'bin' / 'python',
+                    item / 'Scripts' / 'python.exe'
+                ]
+                
+                for python_path in python_paths:
+                    if python_path.exists():
+                        # This looks like a venv
+                        env_name = item.name
+                        
+                        # Count packages
+                        try:
+                            pkg_result = subprocess.run(
+                                [str(python_path), '-m', 'pip', 'list', '--format=json'],
+                                capture_output=True,
+                                text=True,
+                                timeout=5
+                            )
+                            if pkg_result.returncode == 0:
+                                packages = json.loads(pkg_result.stdout)
+                                pkg_count = len(packages)
+                            else:
+                                pkg_count = 0
+                        except:
+                            pkg_count = 0
+                        
+                        environments.append((env_name, 'venv', pkg_count, str(item)))
+                        break  # Found one python, move to next directory
+        except PermissionError:
+            continue
+    
+    # 3. Add current environment (always)
+    current_env_name = os.environ.get('CONDA_DEFAULT_ENV') or os.environ.get('VIRTUAL_ENV', 'current')
+    if isinstance(current_env_name, str) and current_env_name != 'current':
+        # Already in list from conda detection
+        pass
+    else:
+        # Count current packages
+        current_packages = get_installed_packages()
+        environments.insert(0, ('⭐ Current', 'active', len(current_packages), sys.prefix))
+    
+    return environments
+
+
+def get_installed_packages() -> List[Tuple[str, str, str]]:
+    """
+    Get list of all installed packages in the current Python environment.
+    
+    Returns:
+        List of tuples (package_name, version, location)
+        
+    Example:
+        >>> get_installed_packages()
+        [('textual', '0.47.1', '/path/to/site-packages'),
+         ('libcst', '1.8.5', '/path/to/site-packages'), ...]
+    """
+    packages = []
+    
+    try:
+        # Use importlib.metadata (Python 3.8+)
+        for dist in importlib.metadata.distributions():
+            name = dist.metadata['Name']
+            version = dist.version
+            
+            # Try to get location
+            location = "Unknown"
+            if dist.files:
+                # Get the first file to determine location
+                first_file = list(dist.files)[0]
+                file_path = first_file.locate()
+                location = str(Path(file_path).parent.parent)
+            
+            packages.append((name, version, location))
+    except Exception as e:
+        # Fallback: at least return some basic info
+        packages.append(("Error", str(e), "N/A"))
+    
+    # Sort by package name
+    packages.sort(key=lambda x: x[0].lower())
+    
+    return packages
+
+
+def get_packages_from_environment(env_name: str, env_type: str, env_location: str) -> List[Tuple[str, str, str]]:
+    """
+    Get packages from a specific virtual environment.
+    
+    Args:
+        env_name: Name of the environment
+        env_type: Type ('conda', 'venv', 'active')
+        env_location: Path to the environment
+    
+    Returns:
+        List of tuples (package_name, version, location)
+    """
+    packages = []
+    
+    try:
+        if env_type == 'active' or env_name == '⭐ Current':
+            # Current environment - use the current function
+            return get_installed_packages()
+        
+        elif env_type == 'conda':
+            # Use conda list for conda environments
+            result = subprocess.run(
+                ['conda', 'list', '-n', env_name, '--json'],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            if result.returncode == 0:
+                conda_packages = json.loads(result.stdout)
+                for pkg in conda_packages:
+                    name = pkg.get('name', 'unknown')
+                    version = pkg.get('version', 'unknown')
+                    channel = pkg.get('channel', 'unknown')
+                    packages.append((name, version, channel))
+        
+        elif env_type == 'venv':
+            # Use pip list for venv
+            python_path = Path(env_location) / 'bin' / 'python'
+            if not python_path.exists():
+                python_path = Path(env_location) / 'Scripts' / 'python.exe'
+            
+            if python_path.exists():
+                result = subprocess.run(
+                    [str(python_path), '-m', 'pip', 'list', '--format=json'],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                if result.returncode == 0:
+                    pip_packages = json.loads(result.stdout)
+                    for pkg in pip_packages:
+                        name = pkg.get('name', 'unknown')
+                        version = pkg.get('version', 'unknown')
+                        packages.append((name, version, env_location))
+    except Exception as e:
+        packages.append(("Error", str(e), "N/A"))
+    
+    # Sort by package name
+    packages.sort(key=lambda x: x[0].lower())
+    
+    return packages
 
 
 def get_python_environment_info() -> dict:
@@ -28,12 +245,56 @@ def get_python_environment_info() -> dict:
     return info
 
 
-def get_package_path(package_name: str) -> str:
+def _get_import_name(package_name: str) -> str:
+    """
+    Convert package name to Python import name.
+    
+    Many packages have different names for pip/conda vs Python import.
+    
+    Args:
+        package_name: Package name as shown in pip/conda (e.g., 'py-opencv')
+    
+    Returns:
+        Module name to use for import (e.g., 'cv2')
+    """
+    # Common package name to module name mappings
+    PACKAGE_TO_MODULE = {
+        'py-opencv': 'cv2',
+        'opencv-python': 'cv2',
+        'opencv-contrib-python': 'cv2',
+        'pillow': 'PIL',
+        'scikit-learn': 'sklearn',
+        'scikit-image': 'skimage',
+        'beautifulsoup4': 'bs4',
+        'pyyaml': 'yaml',
+        'python-dateutil': 'dateutil',
+        'attrs': 'attr',
+        'protobuf': 'google.protobuf',
+        'pycryptodome': 'Crypto',
+        'pyyaml-env-tag': 'yaml',
+        'msgpack-python': 'msgpack',
+        'ruamel.yaml': 'ruamel.yaml',
+    }
+    
+    # Check if we have a mapping
+    package_lower = package_name.lower()
+    if package_lower in PACKAGE_TO_MODULE:
+        return PACKAGE_TO_MODULE[package_lower]
+    
+    # Default: use package name as-is (but replace hyphens with underscores)
+    # This works for most packages
+    return package_name.replace('-', '_')
+
+
+def get_package_path(package_name: str, env_name: str = "", env_type: str = "", env_location: str = "") -> str:
     """
     Get the installation path of a Python package.
     
     Args:
-        package_name: Name of the package (e.g., 'textual', 'libcst')
+        package_name: Name of the package (e.g., 'textual', 'libcst', 'py-opencv')
+        env_name: Name of the environment (empty for current)
+        env_type: Type of environment ('conda', 'venv', 'active', or empty)
+        env_location: Path to the environment
     
     Returns:
         Absolute path to the package directory
@@ -42,18 +303,69 @@ def get_package_path(package_name: str) -> str:
         >>> get_package_path('textual')
         '/path/to/site-packages/textual'
     """
+    # Convert package name to import name (e.g., 'py-opencv' -> 'cv2')
+    import_name = _get_import_name(package_name)
+    
+    # If no environment specified or current environment, use direct import
+    if not env_name or env_type == 'active' or '⭐' in env_name:
+        try:
+            module = __import__(import_name)
+            if hasattr(module, '__file__') and module.__file__:
+                return os.path.dirname(module.__file__)
+            elif hasattr(module, '__path__'):
+                return str(module.__path__[0])
+            else:
+                raise ValueError(f"Cannot determine path for package: {package_name} (import: {import_name})")
+        except ImportError as e:
+            raise ValueError(f"Package '{package_name}' (import: {import_name}) not found: {e}")
+    
+    # For other environments, we need to query the environment's Python
     try:
-        module = __import__(package_name)
-        if hasattr(module, '__file__') and module.__file__:
-            # Get the directory containing the package
-            return os.path.dirname(module.__file__)
-        elif hasattr(module, '__path__'):
-            # For namespace packages
-            return str(module.__path__[0])
-        else:
-            raise ValueError(f"Cannot determine path for package: {package_name}")
-    except ImportError as e:
-        raise ValueError(f"Package '{package_name}' not found: {e}")
+        if env_type == 'conda':
+            # Use conda run to execute Python in that environment
+            result = subprocess.run(
+                ['conda', 'run', '-n', env_name, 'python', '-c',
+                 f"import {import_name}; import os; print(os.path.dirname({import_name}.__file__) if hasattr({import_name}, '__file__') else {import_name}.__path__[0])"],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            if result.returncode == 0:
+                return result.stdout.strip()
+            else:
+                # Try to find it in site-packages directly
+                error_msg = result.stderr.strip()
+                raise ValueError(f"Package '{package_name}' (import: {import_name}) not found in conda env '{env_name}': {error_msg}")
+        
+        elif env_type == 'venv':
+            # Use the venv's Python directly
+            python_path = Path(env_location) / 'bin' / 'python'
+            if not python_path.exists():
+                python_path = Path(env_location) / 'Scripts' / 'python.exe'
+            
+            if python_path.exists():
+                result = subprocess.run(
+                    [str(python_path), '-c',
+                     f"import {import_name}; import os; print(os.path.dirname({import_name}.__file__) if hasattr({import_name}, '__file__') else {import_name}.__path__[0])"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                if result.returncode == 0:
+                    return result.stdout.strip()
+                else:
+                    error_msg = result.stderr.strip()
+                    raise ValueError(f"Package '{package_name}' (import: {import_name}) not found in venv '{env_name}': {error_msg}")
+            else:
+                raise ValueError(f"Python executable not found in venv: {env_location}")
+        
+        # If we get here, unknown env_type
+        raise ValueError(f"Unknown environment type: {env_type}")
+    
+    except subprocess.TimeoutExpired:
+        raise ValueError(f"Timeout while searching for package '{package_name}' in {env_type} environment '{env_name}'")
+    except Exception as e:
+        raise ValueError(f"Error finding package '{package_name}' in environment '{env_name}': {str(e)}")
 
 
 def scan_directory(root_path: str, extensions: List[str] = ['.py']) -> List[FileNode]:

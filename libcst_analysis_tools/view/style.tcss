@@ -4,32 +4,65 @@ TreeComponent {
 }
 
 DirectoryTreeComponent {
-    width: 30%;
+    width: 33%;
     min-width: 30;
     height: 100%;
 }
-#main-content{
-    height:70%
+
+/* Main layout: Horizontal split */
+#main-layout {
+    width: 100%;
+    height: 100%;
 }
+
+/* LEFT PANEL: Environments (1/3) + Packages (2/3) */
+#left-panel {
+    width: 30%;
+    height: 100%;
+}
+
+#environments-section {
+    height: 33%;
+    width: 100%;
+}
+
+#packages-section {
+    height: 67%;
+    width: 100%;
+    border: solid $primary;
+    border-title-align: left;
+}
+
+/* RIGHT PANEL: Trees (70%) + Log (30%) */
+#right-panel {
+    width: 1fr;
+    height: 100%;
+}
+
+#trees-panel {
+    height: 70%;
+    width: 100%;
+}
+
+#trees-panel > DirectoryTreeComponent,
+#trees-panel > TreeComponent {
+    width: 33%;
+    height: 100%;
+}
+
 #filesystem-tree {
     border: solid $primary;
     border-title-align: left;
-    width: 30%;
-    min-width: 30;
 }
 
 #content-tree {
     border: solid $primary;
     border-title-align: left;
-    width: 30%;
-    min-width: 30;
 }
 
-#callgraph-tree{
+#callgraph-tree {
     border: solid $primary;
     border-title-align: left;
-    width: 20%;
-    min-width: 30;
 }
 
 TableComponent {
@@ -41,18 +74,15 @@ TableComponent {
 LogComponent {
     border: solid $primary;
     border-title-align: left;
-    height: 1fr;
+    height: 30%;
     width: 100%;
 }
-
 
 DataTable {
     height: 100%;
 }
 
-#right-panel {
-    border: solid $primary;
-    border-title-align: left;
-    width: 1fr;
+EnvironmentsTableComponent {
+    width: 100%;
     height: 100%;
 }

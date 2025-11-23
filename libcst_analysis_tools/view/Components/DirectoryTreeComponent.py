@@ -6,7 +6,8 @@ from textual.widgets import DirectoryTree, Input
 from textual.message import Message
 from rich.text import Text
 from pathlib import Path
-from libcst_analysis_tools.view.logger   import Logger
+from typing import Tuple, Dict
+from libcst_analysis_tools.view.logger import Logger
 
 class FilteredDirectoryTree(DirectoryTree):
     """DirectoryTree with filtering capability and enhanced labels."""
@@ -20,6 +21,34 @@ class FilteredDirectoryTree(DirectoryTree):
         if not self.filter_text:
             return paths
         return [p for p in paths if self.filter_text in str(p.name).lower()]
+    
+    def _count_lines(self, file_path: Path) -> int:
+        """Count lines in a file quickly."""
+        try:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                return sum(1 for _ in f)
+        except:
+            return 0
+    
+    def _count_directory_stats(self, directory: Path) -> Tuple[int, int]:
+        """Count files and total lines in a directory (non-recursive for speed).
+        
+        Returns:
+            Tuple of (file_count, total_lines)
+        """
+        file_count = 0
+        total_lines = 0
+        
+        try:
+            # Only count direct children, not recursive
+            for item in directory.glob('*.py'):
+                if item.is_file():
+                    file_count += 1
+                    total_lines += self._count_lines(item)
+        except Exception:
+            pass
+        
+        return file_count, total_lines
     
     def render_label(self, node, base_style, style):
         """Render the label with additional info: folder item count or file line count."""
@@ -35,20 +64,16 @@ class FilteredDirectoryTree(DirectoryTree):
         
         try:
             if path.is_dir():
-                # Count items in directory
-                item_count = sum(1 for _ in path.iterdir())
-                label.append(" ")
-                label.append(f"({item_count})", style="magenta")
-            elif path.is_file():
-                # Count lines in file
-                try:
-                    with open(path, 'r', encoding='utf-8', errors='ignore') as f:
-                        line_count = sum(1 for _ in f)
+                # Count files and lines in direct children only (fast)
+                file_count, total_lines = self._count_directory_stats(path)
+                if file_count > 0:
                     label.append(" ")
-                    label.append(f"({line_count}L)", style="cyan")
-                except Exception:
-                    # If we can't read the file, skip line count
-                    pass
+                    label.append(f"({file_count}F, {total_lines}L)", style="magenta bold")
+            elif path.is_file() and path.suffix == '.py':
+                # Count lines in file
+                lines = self._count_lines(path)
+                label.append(" ")
+                label.append(f"({lines}L)", style="cyan")
         except Exception:
             # If we can't access the path, just return the original label
             pass

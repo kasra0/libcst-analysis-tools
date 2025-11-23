@@ -1,6 +1,39 @@
 # LibCST Analysis Tools
 
-Python code analysis tools built with LibCST - extract classes, functions, and methods from Python source code with full type safety and IntelliSense support.
+Python modules/packages navigator.
+
+- [LibCST Analysis Tools](#libcst-analysis-tools)
+  - [Features](#features)
+  - [Installation](#installation)
+    - [From GitHub](#from-github)
+    - [Local Development](#local-development)
+  - [Command Line Usage](#command-line-usage)
+    - [2. Install dependencies](#2-install-dependencies)
+  - [Project Structure](#project-structure)
+  - [Usage](#usage)
+    - [Launch the gui (textual)](#launch-the-gui-textual)
+    - [List Classes](#list-classes)
+    - [List Functions](#list-functions)
+    - [List Methods](#list-methods)
+  - [Type Definitions](#type-definitions)
+    - [`ClassInfo`](#classinfo)
+    - [`FunctionInfo`](#functioninfo)
+    - [`MethodInfo`](#methodinfo)
+  - [API Reference](#api-reference)
+    - [Modern API (Recommended)](#modern-api-recommended)
+    - [Backward Compatibility](#backward-compatibility)
+  - [Running Tests](#running-tests)
+  - [API Reference](#api-reference-1)
+    - [list\_classes(source\_code: str) -\> List\[Dict\]](#list_classessource_code-str---listdict)
+    - [list\_functions(source\_code: str) -\> List\[Dict\]](#list_functionssource_code-str---listdict)
+    - [list\_methods(source\_code: str, class\_name: str) -\> List\[Dict\]](#list_methodssource_code-str-class_name-str---listdict)
+  - [Development](#development)
+    - [Running Tests](#running-tests-1)
+    - [Coverage Report](#coverage-report)
+    - [Installing Dev Dependencies](#installing-dev-dependencies)
+  - [Dependencies](#dependencies)
+  - [License](#license)
+
 
 ## Features
 
@@ -82,6 +115,14 @@ python-libcst-sandbox/
 ```
 
 ## Usage
+
+### Launch the gui (textual)
+
+```python
+from libcst_analysis_tools import PackageAnalysisApp
+app=PackageAnalysisApp('numpy')
+app.run()
+```
 
 ### List Classes
 
